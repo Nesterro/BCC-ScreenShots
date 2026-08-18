@@ -430,7 +430,129 @@ namespace BCCScreenShot
             }
         }
 
-        // Canvas Mouse Events (Supports both 2-Click Stage Placement and Drag-Release Placement)
+        // Element Duplication Helper (Ctrl + Drag)
+        private UIElement? CloneUIElement(UIElement original)
+        {
+            if (original is Border border && border.Child is TextBlock tb)
+            {
+                double left = Canvas.GetLeft(border);
+                double top = Canvas.GetTop(border);
+                var color = (tb.Foreground as SolidColorBrush)?.Color ?? _currentColor;
+                return CreateEditableTextBlock(tb.Text, left, top, color, tb.FontSize);
+            }
+            else if (original is Grid grid && grid.Children.Count >= 2 && grid.Children[1] is TextBlock stepTb)
+            {
+                double left = Canvas.GetLeft(grid) + 17;
+                double top = Canvas.GetTop(grid) + 17;
+                var color = ((grid.Children[0] as Ellipse)?.Fill as SolidColorBrush)?.Color ?? _currentColor;
+                int.TryParse(stepTb.Text, out int num);
+                var badge = CreateStepBadge(left, top, color, num > 0 ? num : _currentStepNumber);
+                if (badge is Grid newGrid && newGrid.Children[1] is TextBlock newTb)
+                {
+                    newTb.Text = stepTb.Text;
+                }
+                return badge;
+            }
+            else if (original is Canvas calloutCanvas && calloutCanvas.Children.Count >= 3)
+            {
+                Line? line = calloutCanvas.Children[0] as Line;
+                Border? card = calloutCanvas.Children[2] as Border;
+                TextBlock? cardTb = card?.Child as TextBlock;
+
+                if (line != null && card != null && cardTb != null)
+                {
+                    double x1 = line.X1; double y1 = line.Y1;
+                    double x2 = Canvas.GetLeft(card); double y2 = Canvas.GetTop(card);
+                    var color = (cardTb.Foreground as SolidColorBrush)?.Color ?? _currentColor;
+                    return CreateCalloutElement(x1, y1, x2, y2, color, cardTb.Text, cardTb.FontSize);
+                }
+            }
+            else if (original is System.Windows.Shapes.Path path)
+            {
+                double left = Canvas.GetLeft(path);
+                double top = Canvas.GetTop(path);
+                var stroke = path.Stroke as SolidColorBrush;
+                var clonePath = new System.Windows.Shapes.Path
+                {
+                    Data = path.Data.Clone(),
+                    Stroke = stroke != null ? new SolidColorBrush(stroke.Color) : new SolidColorBrush(_currentColor),
+                    Fill = path.Fill != null ? new SolidColorBrush(((SolidColorBrush)path.Fill).Color) : null,
+                    StrokeThickness = path.StrokeThickness,
+                    StrokeStartLineCap = path.StrokeStartLineCap,
+                    StrokeEndLineCap = path.StrokeEndLineCap,
+                    StrokeLineJoin = path.StrokeLineJoin
+                };
+                if (!double.IsNaN(left)) Canvas.SetLeft(clonePath, left);
+                if (!double.IsNaN(top)) Canvas.SetTop(clonePath, top);
+                return clonePath;
+            }
+            else if (original is Rectangle rect)
+            {
+                double left = Canvas.GetLeft(rect);
+                double top = Canvas.GetTop(rect);
+                var stroke = rect.Stroke as SolidColorBrush;
+                var cloneRect = new Rectangle
+                {
+                    Width = rect.Width, Height = rect.Height,
+                    Stroke = stroke != null ? new SolidColorBrush(stroke.Color) : new SolidColorBrush(_currentColor),
+                    Fill = rect.Fill != null ? new SolidColorBrush(((SolidColorBrush)rect.Fill).Color) : null,
+                    StrokeThickness = rect.StrokeThickness
+                };
+                Canvas.SetLeft(cloneRect, left);
+                Canvas.SetTop(cloneRect, top);
+                return cloneRect;
+            }
+            else if (original is Ellipse ellipse)
+            {
+                double left = Canvas.GetLeft(ellipse);
+                double top = Canvas.GetTop(ellipse);
+                var stroke = ellipse.Stroke as SolidColorBrush;
+                var cloneEllipse = new Ellipse
+                {
+                    Width = ellipse.Width, Height = ellipse.Height,
+                    Stroke = stroke != null ? new SolidColorBrush(stroke.Color) : new SolidColorBrush(_currentColor),
+                    Fill = ellipse.Fill != null ? new SolidColorBrush(((SolidColorBrush)ellipse.Fill).Color) : null,
+                    StrokeThickness = ellipse.StrokeThickness
+                };
+                Canvas.SetLeft(cloneEllipse, left);
+                Canvas.SetTop(cloneEllipse, top);
+                return cloneEllipse;
+            }
+            else if (original is Line line)
+            {
+                var stroke = line.Stroke as SolidColorBrush;
+                return new Line
+                {
+                    X1 = line.X1, Y1 = line.Y1, X2 = line.X2, Y2 = line.Y2,
+                    Stroke = stroke != null ? new SolidColorBrush(stroke.Color) : new SolidColorBrush(_currentColor),
+                    StrokeThickness = line.StrokeThickness,
+                    StrokeStartLineCap = line.StrokeStartLineCap,
+                    StrokeEndLineCap = line.StrokeEndLineCap
+                };
+            }
+            else if (original is Polyline polyline)
+            {
+                var stroke = polyline.Stroke as SolidColorBrush;
+                var clonePoly = new Polyline
+                {
+                    Stroke = stroke != null ? new SolidColorBrush(stroke.Color) : new SolidColorBrush(_currentColor),
+                    StrokeThickness = polyline.StrokeThickness,
+                    StrokeStartLineCap = polyline.StrokeStartLineCap,
+                    StrokeEndLineCap = polyline.StrokeEndLineCap,
+                    StrokeLineJoin = polyline.StrokeLineJoin,
+                    Opacity = polyline.Opacity
+                };
+                foreach (var p in polyline.Points)
+                {
+                    clonePoly.Points.Add(p);
+                }
+                return clonePoly;
+            }
+
+            return null;
+        }
+
+        // Canvas Mouse Events (Supports both 2-Click Stage Placement, Drag-Release Placement, and Ctrl + Drag Duplication)
         private void Canvas_MouseDown(object sender, MouseButtonEventArgs e)
         {
             System.Windows.Point current = e.GetPosition(DrawingCanvas);
@@ -453,7 +575,21 @@ namespace BCCScreenShot
                         target = VisualTreeHelper.GetParent(target);
                     }
 
-                    _selectedElement = target as UIElement;
+                    var targetElem = target as UIElement;
+
+                    // Ctrl + Drag to Duplicate Element!
+                    if (Keyboard.Modifiers == ModifierKeys.Control && targetElem != null)
+                    {
+                        var clone = CloneUIElement(targetElem);
+                        if (clone != null)
+                        {
+                            AddAnnotation(clone);
+                            targetElem = clone;
+                            TxtStatus.Text = "Элемент скопирован и перемещается (Ctrl + Drag).";
+                        }
+                    }
+
+                    _selectedElement = targetElem;
                     UpdateSelectionHighlight(_selectedElement);
 
                     _isDraggingElement = true;
@@ -464,7 +600,10 @@ namespace BCCScreenShot
                     if (double.IsNaN(elemTop)) elemTop = 0;
 
                     _dragOffset = new System.Windows.Point(_startPoint.X - elemLeft, _startPoint.Y - elemTop);
-                    TxtStatus.Text = "Элемент выделен. (Delete для удаления)";
+                    if (Keyboard.Modifiers != ModifierKeys.Control)
+                    {
+                        TxtStatus.Text = "Элемент выделен. (Delete для удаления, Ctrl + Drag для копирования)";
+                    }
                 }
                 else
                 {

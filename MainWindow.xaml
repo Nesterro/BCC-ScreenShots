@@ -289,6 +289,7 @@
                         <Separator Background="{StaticResource BorderLight}" Margin="0,15"/>
 
                         <TextBlock Text="Подказки по управлению" FontSize="12" FontWeight="Bold" Foreground="{StaticResource TextMuted}" Margin="0,0,0,6"/>
+                        <TextBlock Text="• Ctrl + Перетаскивание мышью — скопировать / дублировать элемент" FontSize="11" Foreground="{StaticResource AccentCyan}" TextWrapping="Wrap" Margin="0,2"/>
                         <TextBlock Text="• Ctrl + Колесико — Масштабирование холста (Ctrl + 0 — сброс)" FontSize="11" Foreground="{StaticResource TextMuted}" TextWrapping="Wrap" Margin="0,2"/>
                         <TextBlock Text="• Двойной клик по метке 1️⃣ — редактировать текст/номер" FontSize="11" Foreground="{StaticResource TextMuted}" TextWrapping="Wrap" Margin="0,2"/>
                         <TextBlock Text="• Двойной клик по выноске или тексту — правка содержимого" FontSize="11" Foreground="{StaticResource TextMuted}" TextWrapping="Wrap" Margin="0,2"/>
