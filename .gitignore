@@ -1,0 +1,22 @@
+# Build outputs
+bin/
+obj/
+*.user
+*.suo
+*.userosv
+*.sln.docstates
+
+# IDE files
+.vs/
+.idea/
+.vscode/
+
+# Temporary files
+*.tmp
+*.log
+*.bak
+server.ps1
+convert_icon.ps1
+index.html
+style.css
+app.js
