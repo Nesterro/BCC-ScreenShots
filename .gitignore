@@ -1,6 +1,7 @@
 # Build outputs
 bin/
 obj/
+BuildReleaseSingleFile/
 *.user
 *.suo
 *.userosv

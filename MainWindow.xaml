@@ -2,9 +2,9 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="BCC ScreenShot Studio — Нативное приложение аннотаций" 
-        Icon="app_icon.png"
-        Height="780" Width="1240"
-        MinHeight="550" MinWidth="750"
+        Icon="pack://application:,,,/app_icon.ico"
+        Height="800" Width="1280"
+        MinHeight="600" MinWidth="800"
         WindowStartupLocation="CenterScreen"
         WindowStyle="SingleBorderWindow"
         ResizeMode="CanResizeWithGrip"
@@ -12,25 +12,26 @@
         KeyDown="Window_KeyDown">
 
     <Window.Resources>
-        <!-- Dark Theme Colors -->
-        <SolidColorBrush x:Key="BgDark" Color="#0F172A"/>
+        <!-- Modern Soft Dark Color Palette -->
+        <SolidColorBrush x:Key="BgDark" Color="#0B0F19"/>
         <SolidColorBrush x:Key="BgSidebar" Color="#111827"/>
-        <SolidColorBrush x:Key="BgPanel" Color="#1E293B"/>
+        <SolidColorBrush x:Key="BgCard" Color="#1E293B"/>
         <SolidColorBrush x:Key="BgHover" Color="#334155"/>
-        <SolidColorBrush x:Key="AccentPrimary" Color="#6366F1"/>
-        <SolidColorBrush x:Key="AccentSecondary" Color="#06B6D4"/>
-        <SolidColorBrush x:Key="AccentSuccess" Color="#10B981"/>
+        <SolidColorBrush x:Key="AccentRed" Color="#A62639"/>
+        <SolidColorBrush x:Key="AccentCyan" Color="#06B6D4"/>
+        <SolidColorBrush x:Key="AccentGreen" Color="#10B981"/>
         <SolidColorBrush x:Key="TextMain" Color="#F8FAFC"/>
         <SolidColorBrush x:Key="TextMuted" Color="#94A3B8"/>
-        <SolidColorBrush x:Key="BorderLight" Color="#334155"/>
+        <SolidColorBrush x:Key="BorderLight" Color="#2E3A52"/>
 
-        <!-- Tool Button Style -->
+        <!-- Soft Pill Tool Button Style -->
         <Style x:Key="ToolButtonStyle" TargetType="RadioButton">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="Foreground" Value="#94A3B8"/>
             <Setter Property="FontSize" Value="13"/>
-            <Setter Property="Padding" Value="10,8"/>
-            <Setter Property="Margin" Value="0,2"/>
+            <Setter Property="FontWeight" Value="Medium"/>
+            <Setter Property="Padding" Value="12,9"/>
+            <Setter Property="Margin" Value="0,3"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="BorderBrush" Value="Transparent"/>
             <Setter Property="Template">
@@ -39,17 +40,17 @@
                         <Border x:Name="border" Background="{TemplateBinding Background}" 
                                 BorderBrush="{TemplateBinding BorderBrush}" 
                                 BorderThickness="{TemplateBinding BorderThickness}" 
-                                CornerRadius="8" Padding="{TemplateBinding Padding}">
+                                CornerRadius="10" Padding="{TemplateBinding Padding}">
                             <ContentPresenter HorizontalAlignment="Left" VerticalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#334155"/>
+                                <Setter TargetName="border" Property="Background" Value="#1E293B"/>
                                 <Setter Property="Foreground" Value="#FFFFFF"/>
                             </Trigger>
                             <Trigger Property="IsChecked" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#1E1B4B"/>
-                                <Setter TargetName="border" Property="BorderBrush" Value="#6366F1"/>
+                                <Setter TargetName="border" Property="Background" Value="#45121B"/>
+                                <Setter TargetName="border" Property="BorderBrush" Value="#A62639"/>
                                 <Setter Property="Foreground" Value="#FFFFFF"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
@@ -58,14 +59,14 @@
             </Setter>
         </Style>
 
-        <!-- Compact Responsive Header Button Style -->
+        <!-- Soft Header Button Style -->
         <Style x:Key="HeaderBtnStyle" TargetType="Button">
             <Setter Property="Background" Value="#1E293B"/>
             <Setter Property="Foreground" Value="#F8FAFC"/>
             <Setter Property="FontSize" Value="12"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Padding" Value="10,6"/>
-            <Setter Property="Margin" Value="3,3"/>
+            <Setter Property="Padding" Value="12,7"/>
+            <Setter Property="Margin" Value="4,3"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="BorderBrush" Value="#334155"/>
             <Setter Property="Template">
@@ -74,7 +75,7 @@
                         <Border x:Name="border" Background="{TemplateBinding Background}" 
                                 BorderBrush="{TemplateBinding BorderBrush}" 
                                 BorderThickness="{TemplateBinding BorderThickness}" 
-                                CornerRadius="6" Padding="{TemplateBinding Padding}">
+                                CornerRadius="8" Padding="{TemplateBinding Padding}">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
@@ -90,13 +91,13 @@
         <Style x:Key="ColorSwatchStyle" TargetType="Button">
             <Setter Property="Width" Value="28"/>
             <Setter Property="Height" Value="28"/>
-            <Setter Property="Margin" Value="2"/>
+            <Setter Property="Margin" Value="3"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
                         <Border Background="{TemplateBinding Background}" 
                                 BorderBrush="#FFFFFF" 
-                                BorderThickness="1" 
+                                BorderThickness="1.5" 
                                 CornerRadius="14"/>
                     </ControlTemplate>
                 </Setter.Value>
@@ -104,8 +105,8 @@
         </Style>
 
         <Style x:Key="PrimaryBtnStyle" BasedOn="{StaticResource HeaderBtnStyle}" TargetType="Button">
-            <Setter Property="Background" Value="#6366F1"/>
-            <Setter Property="BorderBrush" Value="#4F46E5"/>
+            <Setter Property="Background" Value="#A62639"/>
+            <Setter Property="BorderBrush" Value="#801C2B"/>
         </Style>
         <Style x:Key="SuccessBtnStyle" BasedOn="{StaticResource HeaderBtnStyle}" TargetType="Button">
             <Setter Property="Background" Value="#10B981"/>
@@ -117,43 +118,46 @@
         </Style>
     </Window.Resources>
 
-    <Grid>
+    <Grid Background="{StaticResource BgDark}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
-            <RowDefinition Height="30"/>
+            <RowDefinition Height="32"/>
         </Grid.RowDefinitions>
 
-        <!-- Top Header Navigation Bar (Adaptive WrapPanel) -->
-        <Border Grid.Row="0" Background="{StaticResource BgSidebar}" BorderBrush="{StaticResource BorderLight}" BorderThickness="0,0,0,1" Padding="10,6">
+        <!-- Top Navigation Bar -->
+        <Border Grid.Row="0" Background="{StaticResource BgSidebar}" BorderBrush="{StaticResource BorderLight}" BorderThickness="0,0,0,1" Padding="14,8">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
 
-                <!-- Brand Icon & Title -->
-                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,15,0">
-                    <Border Width="30" Height="30" CornerRadius="6" Background="#6366F1" Margin="0,0,8,0">
-                        <Image Source="app_icon.png" Width="22" Height="22"/>
+                <!-- Brand Logo & Title -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,20,0">
+                    <Border Width="34" Height="34" CornerRadius="10" Background="#A62639" Margin="0,0,10,0">
+                        <Image Source="pack://application:,,,/app_icon.png" Width="24" Height="24"/>
                     </Border>
-                    <TextBlock Text="BCC Studio" FontSize="15" FontWeight="Bold" Foreground="#FFFFFF" VerticalAlignment="Center"/>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="BCC Studio" FontSize="15" FontWeight="Bold" Foreground="#FFFFFF"/>
+                        <TextBlock Text="Screenshot Annotator" FontSize="10" Foreground="{StaticResource TextMuted}"/>
+                    </StackPanel>
                 </StackPanel>
 
-                <!-- Adaptive Action Buttons WrapPanel -->
+                <!-- Action Buttons -->
                 <WrapPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center">
                     <Button x:Name="BtnCaptureArea" Content="✂️ Рамкой" Style="{StaticResource PrimaryBtnStyle}" Click="BtnCaptureArea_Click" ToolTip="✂️ Скриншот выделенной области экрана"/>
                     <Button x:Name="BtnCaptureScreen" Content="📸 Экран" Style="{StaticResource HeaderBtnStyle}" Click="BtnCaptureScreen_Click" ToolTip="📸 Сделать снимок всего экрана"/>
                     <Button x:Name="BtnOpenFile" Content="📁 Файл" Style="{StaticResource HeaderBtnStyle}" Click="BtnOpenFile_Click" ToolTip="📁 Открыть файл с диска"/>
                     <Button x:Name="BtnDemo" Content="🖼️ Демо" Style="{StaticResource HeaderBtnStyle}" Click="BtnDemo_Click" ToolTip="🖼️ Загрузить демо-снимок"/>
 
-                    <Rectangle Width="1" Height="22" Fill="{StaticResource BorderLight}" Margin="4,4"/>
+                    <Rectangle Width="1" Height="22" Fill="{StaticResource BorderLight}" Margin="6,4"/>
 
                     <Button x:Name="BtnUndo" Content="↩️ Отмена" Style="{StaticResource HeaderBtnStyle}" Click="BtnUndo_Click" ToolTip="Отменить последнее действие (Ctrl+Z)"/>
                     <Button x:Name="BtnDeleteSelected" Content="❌ Удалить" Style="{StaticResource DangerBtnStyle}" Click="BtnDeleteSelected_Click" ToolTip="Удалить выделенный элемент (Delete)"/>
                     <Button x:Name="BtnClear" Content="🗑️ Очистить" Style="{StaticResource HeaderBtnStyle}" Click="BtnClear_Click" ToolTip="Очистить все рисунки"/>
 
-                    <Rectangle Width="1" Height="22" Fill="{StaticResource BorderLight}" Margin="4,4"/>
+                    <Rectangle Width="1" Height="22" Fill="{StaticResource BorderLight}" Margin="6,4"/>
 
                     <Button x:Name="BtnCopy" Content="📋 В буфер (Ctrl+C)" Style="{StaticResource HeaderBtnStyle}" Click="BtnCopy_Click" ToolTip="Скопировать изображение в буфер обмена Windows"/>
                     <Button x:Name="BtnSave" Content="💾 Сохранить PNG" Style="{StaticResource SuccessBtnStyle}" Click="BtnSave_Click" ToolTip="Сохранить файл на диск (Ctrl+S)"/>
@@ -161,45 +165,46 @@
             </Grid>
         </Border>
 
-        <!-- Main Workspace -->
+        <!-- Workspace Grid -->
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="170"/>
+                <ColumnDefinition Width="185"/>
                 <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="220"/>
+                <ColumnDefinition Width="235"/>
             </Grid.ColumnDefinitions>
 
             <!-- Left Tools Sidebar -->
-            <Border Grid.Column="0" Background="{StaticResource BgSidebar}" BorderBrush="{StaticResource BorderLight}" BorderThickness="0,0,1,0" Padding="10">
+            <Border Grid.Column="0" Background="{StaticResource BgSidebar}" BorderBrush="{StaticResource BorderLight}" BorderThickness="0,0,1,0" Padding="12">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel>
-                        <TextBlock Text="ВЫБОР И ДВИЖЕНИЕ" FontSize="10" FontWeight="Bold" Foreground="{StaticResource TextMuted}" Margin="5,5,5,2"/>
+                        <TextBlock Text="ВЫБОР И ДВИЖЕНИЕ" FontSize="10" FontWeight="Bold" Foreground="{StaticResource TextMuted}" Margin="4,4,4,4"/>
                         <RadioButton x:Name="ToolSelect" Content="↖ Выбор (Esc)" Style="{StaticResource ToolButtonStyle}" IsChecked="True" Checked="Tool_Checked" Tag="select"/>
 
-                        <TextBlock Text="УКАЗАТЕЛИ" FontSize="10" FontWeight="Bold" Foreground="{StaticResource TextMuted}" Margin="5,12,5,2"/>
+                        <TextBlock Text="УКАЗАТЕЛИ И МЕТКИ" FontSize="10" FontWeight="Bold" Foreground="{StaticResource TextMuted}" Margin="4,14,4,4"/>
                         <RadioButton x:Name="ToolArrow" Content="↗ Стрелка (A)" Style="{StaticResource ToolButtonStyle}" Checked="Tool_Checked" Tag="arrow"/>
+                        <RadioButton x:Name="ToolCallout" Content="💬 Выноска (C)" Style="{StaticResource ToolButtonStyle}" Checked="Tool_Checked" Tag="callout"/>
                         <RadioButton x:Name="ToolStep" Content="1️⃣ Метка (N)" Style="{StaticResource ToolButtonStyle}" Checked="Tool_Checked" Tag="step"/>
 
-                        <TextBlock Text="ФИГУРЫ" FontSize="10" FontWeight="Bold" Foreground="{StaticResource TextMuted}" Margin="5,12,5,2"/>
+                        <TextBlock Text="ФИГУРЫ" FontSize="10" FontWeight="Bold" Foreground="{StaticResource TextMuted}" Margin="4,14,4,4"/>
                         <RadioButton x:Name="ToolRect" Content="🔲 Рамка (R)" Style="{StaticResource ToolButtonStyle}" Checked="Tool_Checked" Tag="rect"/>
                         <RadioButton x:Name="ToolEllipse" Content="⭕ Овал (E)" Style="{StaticResource ToolButtonStyle}" Checked="Tool_Checked" Tag="ellipse"/>
                         <RadioButton x:Name="ToolLine" Content="📏 Линия (L)" Style="{StaticResource ToolButtonStyle}" Checked="Tool_Checked" Tag="line"/>
 
-                        <TextBlock Text="РИСОВАНИЕ" FontSize="10" FontWeight="Bold" Foreground="{StaticResource TextMuted}" Margin="5,12,5,2"/>
+                        <TextBlock Text="РИСОВАНИЕ И ТЕКСТ" FontSize="10" FontWeight="Bold" Foreground="{StaticResource TextMuted}" Margin="4,14,4,4"/>
                         <RadioButton x:Name="ToolText" Content="🔤 Текст (T)" Style="{StaticResource ToolButtonStyle}" Checked="Tool_Checked" Tag="text"/>
                         <RadioButton x:Name="ToolPencil" Content="✏️ Карандаш (P)" Style="{StaticResource ToolButtonStyle}" Checked="Tool_Checked" Tag="pencil"/>
                         <RadioButton x:Name="ToolHighlighter" Content="🖍️ Маркер (H)" Style="{StaticResource ToolButtonStyle}" Checked="Tool_Checked" Tag="highlighter"/>
 
-                        <TextBlock Text="ПРИВАТНОСТЬ" FontSize="10" FontWeight="Bold" Foreground="{StaticResource TextMuted}" Margin="5,12,5,2"/>
+                        <TextBlock Text="ПРИВАТНОСТЬ" FontSize="10" FontWeight="Bold" Foreground="{StaticResource TextMuted}" Margin="4,14,4,4"/>
                         <RadioButton x:Name="ToolBlur" Content="💧 Размытие (B)" Style="{StaticResource ToolButtonStyle}" Checked="Tool_Checked" Tag="blur"/>
                     </StackPanel>
                 </ScrollViewer>
             </Border>
 
-            <!-- Center Canvas Area -->
-            <ScrollViewer Grid.Column="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Background="#0B0F19">
-                <Grid HorizontalAlignment="Center" VerticalAlignment="Center" Margin="20">
-                    <Border x:Name="CanvasContainer" CornerRadius="6" Background="#0F172A" BorderBrush="{StaticResource BorderLight}" BorderThickness="1">
+            <!-- Canvas Viewport Area -->
+            <ScrollViewer Grid.Column="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Background="{StaticResource BgDark}">
+                <Grid HorizontalAlignment="Center" VerticalAlignment="Center" Margin="25">
+                    <Border x:Name="CanvasContainer" CornerRadius="12" Background="#0F172A" BorderBrush="{StaticResource BorderLight}" BorderThickness="1">
                         <Canvas x:Name="DrawingCanvas" Width="900" Height="560" ClipToBounds="True"
                                 MouseLeftButtonDown="Canvas_MouseDown"
                                 MouseMove="Canvas_MouseMove"
@@ -218,7 +223,7 @@
                     <StackPanel>
                         <TextBlock Text="Цвет элемента" FontSize="12" FontWeight="Bold" Foreground="{StaticResource TextMuted}" Margin="0,0,0,10"/>
                         <UniformGrid Columns="5" Margin="0,0,0,10">
-                            <Button Style="{StaticResource ColorSwatchStyle}" Background="#EF4444" Click="ColorSwatch_Click" Tag="#EF4444"/>
+                            <Button Style="{StaticResource ColorSwatchStyle}" Background="#A62639" Click="ColorSwatch_Click" Tag="#A62639"/>
                             <Button Style="{StaticResource ColorSwatchStyle}" Background="#F97316" Click="ColorSwatch_Click" Tag="#F97316"/>
                             <Button Style="{StaticResource ColorSwatchStyle}" Background="#EAB308" Click="ColorSwatch_Click" Tag="#EAB308"/>
                             <Button Style="{StaticResource ColorSwatchStyle}" Background="#22C55E" Click="ColorSwatch_Click" Tag="#22C55E"/>
@@ -232,6 +237,20 @@
 
                         <Separator Background="{StaticResource BorderLight}" Margin="0,15"/>
 
+                        <!-- Shape Fill / Shading Options -->
+                        <TextBlock Text="Заливка и затемнение" FontSize="12" FontWeight="Bold" Foreground="{StaticResource TextMuted}" Margin="0,0,0,8"/>
+                        <CheckBox x:Name="ChkEnableFill" Content="Заливка фона фигуры" Foreground="{StaticResource TextMain}" FontSize="12" Margin="0,0,0,8" Checked="ChkEnableFill_Changed" Unchecked="ChkEnableFill_Changed"/>
+                        <Grid Margin="0,0,0,15">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="45"/>
+                            </Grid.ColumnDefinitions>
+                            <Slider x:Name="SliderFillOpacity" Minimum="5" Maximum="100" Value="30" TickFrequency="5" IsSnapToTickEnabled="True" ValueChanged="SliderFillOpacity_ValueChanged"/>
+                            <TextBlock x:Name="TxtFillOpacityVal" Grid.Column="1" Text="30%" FontSize="12" Foreground="{StaticResource AccentCyan}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                        </Grid>
+
+                        <Separator Background="{StaticResource BorderLight}" Margin="0,15"/>
+
                         <TextBlock Text="Толщина линии" FontSize="12" FontWeight="Bold" Foreground="{StaticResource TextMuted}" Margin="0,0,0,5"/>
                         <Grid Margin="0,0,0,15">
                             <Grid.ColumnDefinitions>
@@ -239,7 +258,7 @@
                                 <ColumnDefinition Width="45"/>
                             </Grid.ColumnDefinitions>
                             <Slider x:Name="SliderStroke" Minimum="1" Maximum="24" Value="4" TickFrequency="1" IsSnapToTickEnabled="True" ValueChanged="SliderStroke_ValueChanged"/>
-                            <TextBlock x:Name="TxtStrokeVal" Grid.Column="1" Text="4 px" FontSize="12" Foreground="{StaticResource AccentSecondary}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="TxtStrokeVal" Grid.Column="1" Text="4 px" FontSize="12" Foreground="{StaticResource AccentCyan}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
                         </Grid>
 
                         <TextBlock Text="Размер шрифта" FontSize="12" FontWeight="Bold" Foreground="{StaticResource TextMuted}" Margin="0,0,0,5"/>
@@ -248,21 +267,21 @@
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="45"/>
                             </Grid.ColumnDefinitions>
-                            <Slider x:Name="SliderFont" Minimum="12" Maximum="64" Value="20" TickFrequency="1" IsSnapToTickEnabled="True" ValueChanged="SliderFont_ValueChanged"/>
-                            <TextBlock x:Name="TxtFontVal" Grid.Column="1" Text="20 px" FontSize="12" Foreground="{StaticResource AccentSecondary}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                            <Slider x:Name="SliderFont" Minimum="12" Maximum="64" Value="18" TickFrequency="1" IsSnapToTickEnabled="True" ValueChanged="SliderFont_ValueChanged"/>
+                            <TextBlock x:Name="TxtFontVal" Grid.Column="1" Text="18 px" FontSize="12" Foreground="{StaticResource AccentCyan}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
                         </Grid>
 
                         <Separator Background="{StaticResource BorderLight}" Margin="0,15"/>
 
-                        <TextBlock Text="Управление и подказки" FontSize="12" FontWeight="Bold" Foreground="{StaticResource TextMuted}" Margin="0,0,0,6"/>
-                        <TextBlock Text="• Нажмите Esc — сбросить инструмент на режим выбора" FontSize="11" Foreground="{StaticResource TextMuted}" TextWrapping="Wrap" Margin="0,2"/>
-                        <TextBlock Text="• Клик по элементу — выделит его рамкой" FontSize="11" Foreground="{StaticResource TextMuted}" TextWrapping="Wrap" Margin="0,2"/>
-                        <TextBlock Text="• Delete или Backspace — мгновенно удалит выделение" FontSize="11" Foreground="{StaticResource TextMuted}" TextWrapping="Wrap" Margin="0,2"/>
-                        <TextBlock Text="• Двойной клик по тексту — редактировать надпись" FontSize="11" Foreground="{StaticResource TextMuted}" TextWrapping="Wrap" Margin="0,2"/>
+                        <TextBlock Text="Подказки по управлению" FontSize="12" FontWeight="Bold" Foreground="{StaticResource TextMuted}" Margin="0,0,0,6"/>
+                        <TextBlock Text="• Построение в 2 клика: Клик 1 — старт, Клик 2 — финиш" FontSize="11" Foreground="{StaticResource TextMuted}" TextWrapping="Wrap" Margin="0,2"/>
+                        <TextBlock Text="• Нажмите Esc — отмена или сброс инструмента" FontSize="11" Foreground="{StaticResource TextMuted}" TextWrapping="Wrap" Margin="0,2"/>
+                        <TextBlock Text="• В выносках перетаскивайте точку-указатель или текст" FontSize="11" Foreground="{StaticResource TextMuted}" TextWrapping="Wrap" Margin="0,2"/>
+                        <TextBlock Text="• Delete или Backspace — мгновенное удаление" FontSize="11" Foreground="{StaticResource TextMuted}" TextWrapping="Wrap" Margin="0,2"/>
 
                         <Separator Background="{StaticResource BorderLight}" Margin="0,15"/>
 
-                        <TextBlock Text="Горячие клавиши" FontSize="12" FontWeight="Bold" Foreground="{StaticResource TextMuted}" Margin="0,0,0,10"/>
+                        <TextBlock Text="Горячие клавиши" FontSize="12" FontWeight="Bold" Foreground="{StaticResource TextMuted}" Margin="0,0,0,8"/>
                         <TextBlock Text="Ctrl + C — Скопировать" FontSize="11" Foreground="{StaticResource TextMuted}" Margin="0,2"/>
                         <TextBlock Text="Ctrl + S — Сохранить PNG" FontSize="11" Foreground="{StaticResource TextMuted}" Margin="0,2"/>
                         <TextBlock Text="Ctrl + Z — Отменить" FontSize="11" Foreground="{StaticResource TextMuted}" Margin="0,2"/>
@@ -272,7 +291,7 @@
         </Grid>
 
         <!-- Bottom Status Bar -->
-        <Border Grid.Row="2" Background="{StaticResource BgSidebar}" BorderBrush="{StaticResource BorderLight}" BorderThickness="0,1,0,0" Padding="15,0">
+        <Border Grid.Row="2" Background="{StaticResource BgSidebar}" BorderBrush="{StaticResource BorderLight}" BorderThickness="0,1,0,0" Padding="16,0">
             <Grid>
                 <TextBlock x:Name="TxtStatus" Text="Готово. Нажмите «✂️ Рамкой» или выберите инструмент. Esc для возврата к выбору." FontSize="12" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center"/>
                 <TextBlock x:Name="TxtCanvasSize" Text="900 x 560 px" FontSize="12" Foreground="{StaticResource TextMuted}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
