@@ -19,6 +19,7 @@ namespace BCCScreenShot
         private double _currentStrokeWidth = 4;
         private double _currentFontSize = 18;
         private int _currentStepNumber = 1;
+        private double _zoomLevel = 1.0;
 
         private bool _isFillEnabled = false;
         private double _fillOpacity = 30; // Percentage 0-100
@@ -94,6 +95,7 @@ namespace BCCScreenShot
             DrawingCanvas.Children.Add(SelectionBoxBorder);
             _annotations.Clear();
             _currentStepNumber = 1;
+            UpdateNextStepUI();
 
             // Demo Arrow
             var arrow = CreateArrow(620, 220, 480, 140, _currentColor, 4);
@@ -116,8 +118,9 @@ namespace BCCScreenShot
             var callout = CreateCalloutElement(620, 80, 640, 230, _currentColor, "Проверьте конверсию здесь!\n(указатель и текст можно двигать отдельно)", 15);
             AddAnnotation(callout);
 
-            // Demo Step Badge
+            // Demo Step Badge (Editable on double-click!)
             var step = CreateStepBadge(600, 80, _currentColor, _currentStepNumber++);
+            UpdateNextStepUI();
             AddAnnotation(step);
         }
 
@@ -139,6 +142,7 @@ namespace BCCScreenShot
                 DrawingCanvas.Children.Add(SelectionBoxBorder);
                 _annotations.Clear();
                 _currentStepNumber = 1;
+                UpdateNextStepUI();
                 TxtStatus.Text = "Выделенный скриншот загружен на холст!";
             }
         }
@@ -176,6 +180,7 @@ namespace BCCScreenShot
                     DrawingCanvas.Children.Add(SelectionBoxBorder);
                     _annotations.Clear();
                     _currentStepNumber = 1;
+                    UpdateNextStepUI();
                 }
             }
 
@@ -194,6 +199,7 @@ namespace BCCScreenShot
                 DrawingCanvas.Children.Add(SelectionBoxBorder);
                 _annotations.Clear();
                 _currentStepNumber = 1;
+                UpdateNextStepUI();
                 TxtStatus.Text = "Файл открыт успешно!";
             }
         }
@@ -256,6 +262,22 @@ namespace BCCScreenShot
             ApplyStyleToSelectedElement();
         }
 
+        private void TxtNextStepVal_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (int.TryParse(TxtNextStepVal.Text, out int nextStep) && nextStep > 0)
+            {
+                _currentStepNumber = nextStep;
+            }
+        }
+
+        private void UpdateNextStepUI()
+        {
+            if (TxtNextStepVal != null)
+            {
+                TxtNextStepVal.Text = _currentStepNumber.ToString();
+            }
+        }
+
         private Brush? GetCurrentFillBrush()
         {
             if (!_isFillEnabled) return null;
@@ -282,6 +304,42 @@ namespace BCCScreenShot
                 }
                 UpdateSelectionHighlight(_selectedElement);
             }
+        }
+
+        // Canvas Zooming with Ctrl + MouseWheel
+        private void CanvasScrollViewer_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+        {
+            if (Keyboard.Modifiers == ModifierKeys.Control)
+            {
+                e.Handled = true;
+                if (e.Delta > 0)
+                {
+                    _zoomLevel = Math.Min(4.0, _zoomLevel + 0.1);
+                }
+                else
+                {
+                    _zoomLevel = Math.Max(0.2, _zoomLevel - 0.1);
+                }
+
+                CanvasScaleTransform.ScaleX = _zoomLevel;
+                CanvasScaleTransform.ScaleY = _zoomLevel;
+                BtnResetZoom.Content = $"🔍 {(int)(_zoomLevel * 100)}%";
+                TxtStatus.Text = $"Масштаб: {(int)(_zoomLevel * 100)}% (Ctrl + 0 для сброса)";
+            }
+        }
+
+        private void BtnResetZoom_Click(object sender, RoutedEventArgs e)
+        {
+            ResetZoom();
+        }
+
+        private void ResetZoom()
+        {
+            _zoomLevel = 1.0;
+            CanvasScaleTransform.ScaleX = 1.0;
+            CanvasScaleTransform.ScaleY = 1.0;
+            BtnResetZoom.Content = "🔍 100%";
+            TxtStatus.Text = "Масштаб сброшен на 100%.";
         }
 
         // Visual Selection Bounding Box Highlight
@@ -425,6 +483,7 @@ namespace BCCScreenShot
             if (_currentTool == "step")
             {
                 var badge = CreateStepBadge(_startPoint.X, _startPoint.Y, _currentColor, _currentStepNumber++);
+                UpdateNextStepUI();
                 AddAnnotation(badge);
                 _isTwoStageActive = false;
                 _isDrawing = false;
@@ -452,11 +511,11 @@ namespace BCCScreenShot
                 _activePolyline = new Polyline
                 {
                     Stroke = new SolidColorBrush(_currentColor),
-                    StrokeThickness = _currentTool == "highlighter" ? _currentStrokeWidth * 3 : _currentStrokeWidth,
+                    StrokeThickness = _currentTool == "highlighter" ? _currentStrokeWidth * 3.5 : _currentStrokeWidth,
                     StrokeLineJoin = PenLineJoin.Round,
                     StrokeStartLineCap = PenLineCap.Round,
                     StrokeEndLineCap = PenLineCap.Round,
-                    Opacity = _currentTool == "highlighter" ? 0.45 : 1.0,
+                    Opacity = _currentTool == "highlighter" ? 0.40 : 1.0,
                     IsHitTestVisible = false
                 };
                 _activePolyline.Points.Add(_startPoint);
@@ -543,16 +602,6 @@ namespace BCCScreenShot
                     };
                     Canvas.SetLeft(ellipse, left); Canvas.SetTop(ellipse, top);
                     _activePreviewElement = ellipse;
-                    break;
-                case "blur":
-                    var blurRect = new Rectangle
-                    {
-                        Width = width, Height = height,
-                        Fill = new SolidColorBrush(System.Windows.Media.Color.FromArgb(220, 30, 41, 59)),
-                        Stroke = new SolidColorBrush(_currentColor), StrokeThickness = 1
-                    };
-                    Canvas.SetLeft(blurRect, left); Canvas.SetTop(blurRect, top);
-                    _activePreviewElement = blurRect;
                     break;
             }
 
@@ -717,13 +766,11 @@ namespace BCCScreenShot
 
             // Dragging Target Pointer Handle Dot (x1, y1)
             bool isDraggingDot = false;
-            System.Windows.Point dotStart = new System.Windows.Point();
 
             targetDot.MouseLeftButtonDown += (s, e) =>
             {
                 e.Handled = true;
                 isDraggingDot = true;
-                dotStart = e.GetPosition(DrawingCanvas);
                 targetDot.CaptureMouse();
             };
 
@@ -766,9 +813,10 @@ namespace BCCScreenShot
             return calloutCanvas;
         }
 
+        // Factory Method: Editable Step Badge (Double Click to Edit Number/Text!)
         private UIElement CreateStepBadge(double x, double y, System.Windows.Media.Color color, int stepNum)
         {
-            var grid = new Grid { Width = 32, Height = 32, Cursor = Cursors.SizeAll };
+            var grid = new Grid { Width = 34, Height = 34, Cursor = Cursors.SizeAll };
             var ellipse = new Ellipse
             {
                 Fill = new SolidColorBrush(color),
@@ -785,9 +833,65 @@ namespace BCCScreenShot
             grid.Children.Add(ellipse);
             grid.Children.Add(txt);
 
-            Canvas.SetLeft(grid, x - 16);
-            Canvas.SetTop(grid, y - 16);
+            grid.MouseLeftButtonDown += (s, e) =>
+            {
+                if (e.ClickCount == 2)
+                {
+                    e.Handled = true;
+                    StartInlineStepEdit(grid, txt);
+                }
+            };
+
+            Canvas.SetLeft(grid, x - 17);
+            Canvas.SetTop(grid, y - 17);
             return grid;
+        }
+
+        private void StartInlineStepEdit(Grid grid, TextBlock txt)
+        {
+            var editBox = new TextBox
+            {
+                Text = txt.Text,
+                FontSize = 13,
+                FontWeight = FontWeights.Bold,
+                Foreground = Brushes.White,
+                Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(15, 23, 42)),
+                BorderThickness = new Thickness(1),
+                BorderBrush = Brushes.Cyan,
+                Padding = new Thickness(2),
+                HorizontalContentAlignment = HorizontalAlignment.Center,
+                VerticalContentAlignment = VerticalAlignment.Center,
+                Width = 34, Height = 34
+            };
+
+            grid.Children.Add(editBox);
+            editBox.Focus();
+            editBox.SelectAll();
+
+            Action commitStep = () =>
+            {
+                string newLabel = editBox.Text.Trim();
+                if (string.IsNullOrEmpty(newLabel)) newLabel = "1";
+                txt.Text = newLabel;
+                grid.Children.Remove(editBox);
+                UpdateSelectionHighlight(grid);
+            };
+
+            editBox.KeyDown += (s, e) =>
+            {
+                if (e.Key == Key.Enter)
+                {
+                    e.Handled = true;
+                    commitStep();
+                }
+                else if (e.Key == Key.Escape)
+                {
+                    e.Handled = true;
+                    grid.Children.Remove(editBox);
+                }
+            };
+
+            editBox.LostFocus += (s, e) => commitStep();
         }
 
         // Editable Text Block Control with Multi-Line Double-Click Inline Editor
@@ -902,6 +1006,7 @@ namespace BCCScreenShot
             DrawingCanvas.Children.Clear();
             DrawingCanvas.Children.Add(SelectionBoxBorder);
             _currentStepNumber = 1;
+            UpdateNextStepUI();
             ClearSelection();
             TxtStatus.Text = "Все аннотации очищены.";
         }
@@ -947,7 +1052,7 @@ namespace BCCScreenShot
             }
         }
 
-        // Global KeyDown (Escape for Reset Tool, Delete / Back for Instant Delete, Shortcuts for tools)
+        // Global KeyDown (Escape for Reset Tool, Delete / Back for Instant Delete, Shortcuts for tools, Ctrl+0 for Zoom Reset)
         private void Window_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
         {
             if (e.Key == Key.Escape)
@@ -972,6 +1077,10 @@ namespace BCCScreenShot
             {
                 BtnUndo_Click(sender, e);
             }
+            else if (Keyboard.Modifiers == ModifierKeys.Control && (e.Key == Key.D0 || e.Key == Key.NumPad0))
+            {
+                ResetZoom();
+            }
             else if (Keyboard.Modifiers == ModifierKeys.None)
             {
                 switch (e.Key)
@@ -985,7 +1094,6 @@ namespace BCCScreenShot
                     case Key.N: ToolStep.IsChecked = true; break;
                     case Key.P: ToolPencil.IsChecked = true; break;
                     case Key.H: ToolHighlighter.IsChecked = true; break;
-                    case Key.B: ToolBlur.IsChecked = true; break;
                 }
             }
         }

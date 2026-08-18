@@ -194,17 +194,19 @@
                         <RadioButton x:Name="ToolText" Content="🔤 Текст (T)" Style="{StaticResource ToolButtonStyle}" Checked="Tool_Checked" Tag="text"/>
                         <RadioButton x:Name="ToolPencil" Content="✏️ Карандаш (P)" Style="{StaticResource ToolButtonStyle}" Checked="Tool_Checked" Tag="pencil"/>
                         <RadioButton x:Name="ToolHighlighter" Content="🖍️ Маркер (H)" Style="{StaticResource ToolButtonStyle}" Checked="Tool_Checked" Tag="highlighter"/>
-
-                        <TextBlock Text="ПРИВАТНОСТЬ" FontSize="10" FontWeight="Bold" Foreground="{StaticResource TextMuted}" Margin="4,14,4,4"/>
-                        <RadioButton x:Name="ToolBlur" Content="💧 Размытие (B)" Style="{StaticResource ToolButtonStyle}" Checked="Tool_Checked" Tag="blur"/>
                     </StackPanel>
                 </ScrollViewer>
             </Border>
 
-            <!-- Canvas Viewport Area -->
-            <ScrollViewer Grid.Column="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Background="{StaticResource BgDark}">
-                <Grid HorizontalAlignment="Center" VerticalAlignment="Center" Margin="25">
+            <!-- Canvas Viewport Area with Zoom & Pan Support -->
+            <ScrollViewer x:Name="CanvasScrollViewer" Grid.Column="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Background="{StaticResource BgDark}" PreviewMouseWheel="CanvasScrollViewer_PreviewMouseWheel">
+                <Grid x:Name="CanvasViewportGrid" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="25">
                     <Border x:Name="CanvasContainer" CornerRadius="12" Background="#0F172A" BorderBrush="{StaticResource BorderLight}" BorderThickness="1">
+                        <Border.LayoutTransform>
+                            <TransformGroup>
+                                <ScaleTransform x:Name="CanvasScaleTransform" ScaleX="1" ScaleY="1"/>
+                            </TransformGroup>
+                        </Border.LayoutTransform>
                         <Canvas x:Name="DrawingCanvas" Width="900" Height="560" ClipToBounds="True"
                                 MouseLeftButtonDown="Canvas_MouseDown"
                                 MouseMove="Canvas_MouseMove"
@@ -234,6 +236,19 @@
                             <Button Style="{StaticResource ColorSwatchStyle}" Background="#FFFFFF" Click="ColorSwatch_Click" Tag="#FFFFFF"/>
                             <Button Style="{StaticResource ColorSwatchStyle}" Background="#000000" Click="ColorSwatch_Click" Tag="#000000"/>
                         </UniformGrid>
+
+                        <Separator Background="{StaticResource BorderLight}" Margin="0,15"/>
+
+                        <!-- Step Counter Settings -->
+                        <TextBlock Text="Нумерация меток (1️⃣)" FontSize="12" FontWeight="Bold" Foreground="{StaticResource TextMuted}" Margin="0,0,0,6"/>
+                        <Grid Margin="0,0,0,15">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="70"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Следующая метка:" FontSize="12" Foreground="{StaticResource TextMain}" VerticalAlignment="Center"/>
+                            <TextBox x:Name="TxtNextStepVal" Grid.Column="1" Text="1" FontSize="12" FontWeight="Bold" Foreground="{StaticResource AccentCyan}" Background="#1E293B" BorderBrush="{StaticResource BorderLight}" Padding="4,2" HorizontalContentAlignment="Center" TextChanged="TxtNextStepVal_TextChanged"/>
+                        </Grid>
 
                         <Separator Background="{StaticResource BorderLight}" Margin="0,15"/>
 
@@ -274,10 +289,10 @@
                         <Separator Background="{StaticResource BorderLight}" Margin="0,15"/>
 
                         <TextBlock Text="Подказки по управлению" FontSize="12" FontWeight="Bold" Foreground="{StaticResource TextMuted}" Margin="0,0,0,6"/>
-                        <TextBlock Text="• Построение в 2 клика: Клик 1 — старт, Клик 2 — финиш" FontSize="11" Foreground="{StaticResource TextMuted}" TextWrapping="Wrap" Margin="0,2"/>
-                        <TextBlock Text="• Нажмите Esc — отмена или сброс инструмента" FontSize="11" Foreground="{StaticResource TextMuted}" TextWrapping="Wrap" Margin="0,2"/>
-                        <TextBlock Text="• В выносках перетаскивайте точку-указатель или текст" FontSize="11" Foreground="{StaticResource TextMuted}" TextWrapping="Wrap" Margin="0,2"/>
-                        <TextBlock Text="• Delete или Backspace — мгновенное удаление" FontSize="11" Foreground="{StaticResource TextMuted}" TextWrapping="Wrap" Margin="0,2"/>
+                        <TextBlock Text="• Ctrl + Колесико — Масштабирование холста (Ctrl + 0 — сброс)" FontSize="11" Foreground="{StaticResource TextMuted}" TextWrapping="Wrap" Margin="0,2"/>
+                        <TextBlock Text="• Двойной клик по метке 1️⃣ — редактировать текст/номер" FontSize="11" Foreground="{StaticResource TextMuted}" TextWrapping="Wrap" Margin="0,2"/>
+                        <TextBlock Text="• Двойной клик по выноске или тексту — правка содержимого" FontSize="11" Foreground="{StaticResource TextMuted}" TextWrapping="Wrap" Margin="0,2"/>
+                        <TextBlock Text="• Esc — отмена или сброс инструмента" FontSize="11" Foreground="{StaticResource TextMuted}" TextWrapping="Wrap" Margin="0,2"/>
 
                         <Separator Background="{StaticResource BorderLight}" Margin="0,15"/>
 
@@ -285,6 +300,7 @@
                         <TextBlock Text="Ctrl + C — Скопировать" FontSize="11" Foreground="{StaticResource TextMuted}" Margin="0,2"/>
                         <TextBlock Text="Ctrl + S — Сохранить PNG" FontSize="11" Foreground="{StaticResource TextMuted}" Margin="0,2"/>
                         <TextBlock Text="Ctrl + Z — Отменить" FontSize="11" Foreground="{StaticResource TextMuted}" Margin="0,2"/>
+                        <TextBlock Text="Ctrl + 0 — Сброс масштаба" FontSize="11" Foreground="{StaticResource TextMuted}" Margin="0,2"/>
                     </StackPanel>
                 </ScrollViewer>
             </Border>
@@ -293,8 +309,11 @@
         <!-- Bottom Status Bar -->
         <Border Grid.Row="2" Background="{StaticResource BgSidebar}" BorderBrush="{StaticResource BorderLight}" BorderThickness="0,1,0,0" Padding="16,0">
             <Grid>
-                <TextBlock x:Name="TxtStatus" Text="Готово. Нажмите «✂️ Рамкой» или выберите инструмент. Esc для возврата к выбору." FontSize="12" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center"/>
-                <TextBlock x:Name="TxtCanvasSize" Text="900 x 560 px" FontSize="12" Foreground="{StaticResource TextMuted}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                <TextBlock x:Name="TxtStatus" Text="Готово. Ctrl + Колесико для масштаба. Esc для возврата к выбору." FontSize="12" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center"/>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <TextBlock x:Name="TxtCanvasSize" Text="900 x 560 px" FontSize="12" Foreground="{StaticResource TextMuted}" Margin="0,0,15,0"/>
+                    <Button x:Name="BtnResetZoom" Content="🔍 100%" Style="{StaticResource HeaderBtnStyle}" Padding="6,2" Margin="0" Click="BtnResetZoom_Click" ToolTip="Сбросить масштаб холста на 100% (Ctrl + 0)"/>
+                </StackPanel>
             </Grid>
         </Border>
     </Grid>
