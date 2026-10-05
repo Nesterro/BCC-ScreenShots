@@ -7,7 +7,6 @@ namespace BCCScreenShot
     {
         protected override void OnStartup(StartupEventArgs e)
         {
-            ScreenCaptureService.InitializeDpiAwareness();
 
             AppDomain.CurrentDomain.UnhandledException += (s, args) =>
             {
