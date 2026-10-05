@@ -7,12 +7,14 @@ namespace BCCScreenShot
     {
         protected override void OnStartup(StartupEventArgs e)
         {
+            ScreenCaptureService.InitializeDpiAwareness();
+
             AppDomain.CurrentDomain.UnhandledException += (s, args) =>
             {
                 var ex = args.ExceptionObject as Exception;
                 System.Windows.MessageBox.Show(
                     $"Произошла ошибка при запуске программы:\n\n{ex?.Message}\n\n{ex?.StackTrace}",
-                    "BCC ScreenShot Studio — Ошибка запуска",
+                    "ScreenShot Studio — Ошибка запуска",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
             };
@@ -21,7 +23,7 @@ namespace BCCScreenShot
             {
                 System.Windows.MessageBox.Show(
                     $"Ошибка приложения:\n\n{args.Exception.Message}",
-                    "BCC ScreenShot Studio",
+                    "ScreenShot Studio",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
                 args.Handled = true;

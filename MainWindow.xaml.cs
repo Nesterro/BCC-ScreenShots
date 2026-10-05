@@ -8,69 +8,126 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 using Microsoft.Win32;
-using Drawing = System.Drawing;
 
 namespace BCCScreenShot
 {
+    public class ArrowData
+    {
+        public double X1 { get; set; }
+        public double Y1 { get; set; }
+        public double X2 { get; set; }
+        public double Y2 { get; set; }
+    }
+
     public partial class MainWindow : Window
     {
         private string _currentTool = "select";
         private System.Windows.Media.Color _currentColor = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#A62639");
+        private System.Windows.Media.Color _currentCalloutBgColor = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#1E293B");
         private double _currentStrokeWidth = 4;
         private double _currentFontSize = 18;
         private int _currentStepNumber = 1;
         private double _zoomLevel = 1.0;
 
         private bool _isFillEnabled = false;
-        private double _fillOpacity = 30; // Percentage 0-100
+        private double _fillOpacity = 30; // 0-100%
+        private bool _isSyncingInspector = false;
 
-        private ImageSource? _bgImage;
+        private BitmapSource? _bgImage;
         private readonly List<UIElement> _annotations = new();
         private readonly Stack<List<UIElement>> _undoStack = new();
+        private readonly Stack<List<UIElement>> _redoStack = new();
 
         private bool _isDrawing;
         private bool _isTwoStageActive;
         private bool _isDraggingElement;
         private System.Windows.Point _startPoint;
         private System.Windows.Point _dragOffset;
+        private System.Windows.Point _dragLastPoint;
         private UIElement? _activePreviewElement;
         private Polyline? _activePolyline;
         private UIElement? _selectedElement;
 
+        private string? _activeHandleName;
+
         public MainWindow()
         {
             InitializeComponent();
-            LoadDemoCanvas();
+            UpdateScreenCaptureMenu();
+            ConfigureHandleZIndices();
+            Loaded += (s, e) => LoadDemoCanvas();
+        }
+
+        private void ConfigureHandleZIndices()
+        {
+            Panel.SetZIndex(SelectionBoxBorder, 99990);
+            Panel.SetZIndex(HandleTL, 99999);
+            Panel.SetZIndex(HandleTR, 99999);
+            Panel.SetZIndex(HandleBL, 99999);
+            Panel.SetZIndex(HandleBR, 99999);
+            Panel.SetZIndex(HandleP1, 99999);
+            Panel.SetZIndex(HandleP2, 99999);
+        }
+
+        private void UpdateScreenCaptureMenu()
+        {
+            var monitors = ScreenCaptureService.GetMonitors();
+            var menu = new ContextMenu();
+
+            foreach (var mon in monitors)
+            {
+                var item = new MenuItem
+                {
+                    Header = $"🖥️ {mon.FriendlyName} ({mon.Bounds.Width} × {mon.Bounds.Height} px)"
+                };
+                var currentMon = mon;
+                item.Click += (s, e) => CaptureSelectedMonitor(currentMon);
+                menu.Items.Add(item);
+            }
+
+            if (monitors.Count > 1)
+            {
+                menu.Items.Add(new Separator());
+                var allItem = new MenuItem
+                {
+                    Header = "🌐 Все экраны (Полный рабочий стол)"
+                };
+                allItem.Click += (s, e) => CaptureVirtualScreen();
+                menu.Items.Add(allItem);
+            }
+
+            BtnCaptureScreen.ContextMenu = menu;
         }
 
         private void LoadDemoCanvas()
         {
-            int w = 920, h = 560;
+            int w = 1200, h = 720;
             var drawingVisual = new DrawingVisual();
             using (var dc = drawingVisual.RenderOpen())
             {
                 dc.DrawRectangle(new SolidColorBrush(System.Windows.Media.Color.FromRgb(15, 23, 42)), null, new Rect(0, 0, w, h));
-                dc.DrawRectangle(new SolidColorBrush(System.Windows.Media.Color.FromRgb(30, 41, 59)), null, new Rect(0, 0, w, 50));
+                dc.DrawRectangle(new SolidColorBrush(System.Windows.Media.Color.FromRgb(30, 41, 59)), null, new Rect(0, 0, w, 60));
                 dc.DrawText(
                     new FormattedText("Аналитический Отчет компании — Рабочий Стол",
                         System.Globalization.CultureInfo.CurrentCulture,
                         FlowDirection.LeftToRight,
-                        new Typeface("Segoe UI"), 16, Brushes.White, 1.25),
-                    new System.Windows.Point(20, 14));
+                        new Typeface(new FontFamily("Segoe UI"), FontStyles.Normal, FontWeights.SemiBold, FontStretches.Normal),
+                        18, Brushes.White, 1.25),
+                    new System.Windows.Point(24, 18));
 
                 // Cards
                 var cardBg = new SolidColorBrush(System.Windows.Media.Color.FromRgb(30, 41, 59));
-                dc.DrawRoundedRectangle(cardBg, null, new Rect(40, 80, 260, 100), 8, 8);
-                dc.DrawText(new FormattedText("Выручка", System.Globalization.CultureInfo.CurrentCulture, FlowDirection.LeftToRight, new Typeface("Segoe UI"), 12, Brushes.Gray, 1.25), new System.Windows.Point(60, 95));
-                dc.DrawText(new FormattedText("2 450 000 ₽", System.Globalization.CultureInfo.CurrentCulture, FlowDirection.LeftToRight, new Typeface("Segoe UI"), 22, Brushes.LightGreen, 1.25), new System.Windows.Point(60, 125));
+                dc.DrawRoundedRectangle(cardBg, null, new Rect(40, 100, 340, 120), 8, 8);
+                dc.DrawText(new FormattedText("Выручка за месяц", System.Globalization.CultureInfo.CurrentCulture, FlowDirection.LeftToRight, new Typeface("Segoe UI"), 13, Brushes.Gray, 1.25), new System.Windows.Point(60, 120));
+                dc.DrawText(new FormattedText("2 450 000 ₽", System.Globalization.CultureInfo.CurrentCulture, FlowDirection.LeftToRight, new Typeface(new FontFamily("Segoe UI"), FontStyles.Normal, FontWeights.Bold, FontStretches.Normal), 26, Brushes.LightGreen, 1.25), new System.Windows.Point(60, 155));
 
-                dc.DrawRoundedRectangle(cardBg, null, new Rect(330, 80, 260, 100), 8, 8);
-                dc.DrawText(new FormattedText("Пользователи", System.Globalization.CultureInfo.CurrentCulture, FlowDirection.LeftToRight, new Typeface("Segoe UI"), 12, Brushes.Gray, 1.25), new System.Windows.Point(350, 95));
-                dc.DrawText(new FormattedText("+184 аккаунта", System.Globalization.CultureInfo.CurrentCulture, FlowDirection.LeftToRight, new Typeface("Segoe UI"), 22, Brushes.Cyan, 1.25), new System.Windows.Point(350, 125));
+                dc.DrawRoundedRectangle(cardBg, null, new Rect(420, 100, 340, 120), 8, 8);
+                dc.DrawText(new FormattedText("Новые пользователи", System.Globalization.CultureInfo.CurrentCulture, FlowDirection.LeftToRight, new Typeface("Segoe UI"), 13, Brushes.Gray, 1.25), new System.Windows.Point(440, 120));
+                dc.DrawText(new FormattedText("+184 аккаунта", System.Globalization.CultureInfo.CurrentCulture, FlowDirection.LeftToRight, new Typeface(new FontFamily("Segoe UI"), FontStyles.Normal, FontWeights.Bold, FontStretches.Normal), 26, Brushes.Cyan, 1.25), new System.Windows.Point(440, 155));
 
-                dc.DrawRoundedRectangle(cardBg, null, new Rect(620, 80, 260, 100), 8, 8);
-                dc.DrawText(new FormattedText("Конверсия", System.Globalization.CultureInfo.CurrentCulture, FlowDirection.LeftToRight, new Typeface("Segoe UI"), 12, Brushes.Gray, 1.25), new System.Windows.Point(640, 95));
-                dc.DrawText(new FormattedText("94.2%", System.Globalization.CultureInfo.CurrentCulture, FlowDirection.LeftToRight, new Typeface("Segoe UI"), 22, Brushes.MediumPurple, 1.25), new System.Windows.Point(640, 125));
+                dc.DrawRoundedRectangle(cardBg, null, new Rect(800, 100, 340, 120), 8, 8);
+                dc.DrawText(new FormattedText("Конверсия в оплату", System.Globalization.CultureInfo.CurrentCulture, FlowDirection.LeftToRight, new Typeface("Segoe UI"), 13, Brushes.Gray, 1.25), new System.Windows.Point(820, 120));
+                dc.DrawText(new FormattedText("94.2%", System.Globalization.CultureInfo.CurrentCulture, FlowDirection.LeftToRight, new Typeface(new FontFamily("Segoe UI"), FontStyles.Normal, FontWeights.Bold, FontStretches.Normal), 26, Brushes.MediumPurple, 1.25), new System.Windows.Point(820, 155));
             }
 
             var rtb = new RenderTargetBitmap(w, h, 96, 96, PixelFormats.Pbgra32);
@@ -80,112 +137,143 @@ namespace BCCScreenShot
             AddDefaultDemoAnnotations();
         }
 
-        private void SetBackgroundImage(ImageSource imgSource)
+        private void SetBackgroundImage(BitmapSource imgSource)
         {
             _bgImage = imgSource;
-            DrawingCanvas.Width = imgSource.Width;
-            DrawingCanvas.Height = imgSource.Height;
+            DrawingCanvas.Width = imgSource.PixelWidth;
+            DrawingCanvas.Height = imgSource.PixelHeight;
             DrawingCanvas.Background = new ImageBrush(imgSource);
-            TxtCanvasSize.Text = $"{(int)imgSource.Width} x {(int)imgSource.Height} px";
+            TxtCanvasSize.Text = $"{imgSource.PixelWidth} × {imgSource.PixelHeight} px";
+
+            FitZoomToViewport();
+        }
+
+        private void ResetCanvasAnnotations()
+        {
+            DrawingCanvas.Children.Clear();
+            DrawingCanvas.Children.Add(SelectionBoxBorder);
+            DrawingCanvas.Children.Add(HandleTL);
+            DrawingCanvas.Children.Add(HandleTR);
+            DrawingCanvas.Children.Add(HandleBL);
+            DrawingCanvas.Children.Add(HandleBR);
+            DrawingCanvas.Children.Add(HandleP1);
+            DrawingCanvas.Children.Add(HandleP2);
+
+            _annotations.Clear();
+            _undoStack.Clear();
+            _currentStepNumber = 1;
+            UpdateNextStepUI();
+            ClearSelection();
         }
 
         private void AddDefaultDemoAnnotations()
         {
-            DrawingCanvas.Children.Clear();
-            DrawingCanvas.Children.Add(SelectionBoxBorder);
-            _annotations.Clear();
-            _currentStepNumber = 1;
-            UpdateNextStepUI();
+            ResetCanvasAnnotations();
 
             // Demo Arrow
-            var arrow = CreateArrow(620, 220, 480, 140, _currentColor, 4);
+            var arrow = CreateArrow(800, 280, 620, 170, _currentColor, 4);
             AddAnnotation(arrow);
 
             // Demo Rect with Shaded Fill
-            var fillBrush = new SolidColorBrush(System.Windows.Media.Color.FromArgb(75, _currentColor.R, _currentColor.G, _currentColor.B));
+            var fillBrush = new SolidColorBrush(System.Windows.Media.Color.FromArgb(50, _currentColor.R, _currentColor.G, _currentColor.B));
             var rect = new Rectangle
             {
-                Width = 260, Height = 100,
+                Width = 340, Height = 120,
                 Stroke = new SolidColorBrush(_currentColor),
                 StrokeThickness = 3,
-                Fill = fillBrush
+                Fill = fillBrush,
+                Cursor = Cursors.SizeAll
             };
-            Canvas.SetLeft(rect, 620);
-            Canvas.SetTop(rect, 80);
+            Canvas.SetLeft(rect, 800);
+            Canvas.SetTop(rect, 100);
             AddAnnotation(rect);
 
-            // Demo Callout with Pointer
-            var callout = CreateCalloutElement(620, 80, 640, 230, _currentColor, "Проверьте конверсию здесь!\n(указатель и текст можно двигать отдельно)", 15);
+            // Demo Callout with pointer and background
+            var callout = CreateCalloutElement(800, 100, 820, 260, _currentColor, "Проверьте конверсию здесь!\nЦвет и размер теперь можно редактировать!", 15, _currentCalloutBgColor);
             AddAnnotation(callout);
 
-            // Demo Step Badge (Editable on double-click!)
-            var step = CreateStepBadge(600, 80, _currentColor, _currentStepNumber++);
+            // Demo Step Badge
+            var step = CreateStepBadge(780, 100, _currentColor, _currentStepNumber++);
             UpdateNextStepUI();
             AddAnnotation(step);
+
+            // Select the rectangle by default
+            SelectElement(rect);
         }
 
         // Screen Capture Region Snippet Window
         private void BtnCaptureArea_Click(object sender, RoutedEventArgs e)
         {
             Hide();
-            System.Threading.Thread.Sleep(200);
+            System.Threading.Thread.Sleep(150);
 
-            var snippetWin = new ScreenSnippetWindow();
+            using var bmp = ScreenCaptureService.CaptureVirtualScreen();
+            var bs = ScreenCaptureService.BitmapToBitmapSource(bmp);
+
+            var snippetWin = new ScreenSnippetWindow(bs);
             bool? result = snippetWin.ShowDialog();
 
             Show();
+            Activate();
 
             if (result == true && snippetWin.CapturedBitmap != null)
             {
                 SetBackgroundImage(snippetWin.CapturedBitmap);
-                DrawingCanvas.Children.Clear();
-                DrawingCanvas.Children.Add(SelectionBoxBorder);
-                _annotations.Clear();
-                _currentStepNumber = 1;
-                UpdateNextStepUI();
-                TxtStatus.Text = "Выделенный скриншот загружен на холст!";
+                ResetCanvasAnnotations();
+                TxtStatus.Text = $"Выделенная область ({snippetWin.CapturedBitmap.PixelWidth} × {snippetWin.CapturedBitmap.PixelHeight} px) загружена на холст!";
             }
         }
 
-        // Screen Capture Full Screen
+        // Screen Capture Button
         private void BtnCaptureScreen_Click(object sender, RoutedEventArgs e)
         {
-            Hide();
-            System.Threading.Thread.Sleep(300);
-
-            int width = (int)SystemParameters.PrimaryScreenWidth;
-            int height = (int)SystemParameters.PrimaryScreenHeight;
-
-            using (var bmp = new Drawing.Bitmap(width, height))
+            var monitors = ScreenCaptureService.GetMonitors();
+            if (monitors.Count == 1)
             {
-                using (var g = Drawing.Graphics.FromImage(bmp))
+                CaptureSelectedMonitor(monitors[0]);
+            }
+            else
+            {
+                UpdateScreenCaptureMenu();
+                if (BtnCaptureScreen.ContextMenu != null)
                 {
-                    g.CopyFromScreen(0, 0, 0, 0, new Drawing.Size(width, height));
-                }
-
-                using (var ms = new MemoryStream())
-                {
-                    bmp.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
-                    ms.Position = 0;
-
-                    var bi = new BitmapImage();
-                    bi.BeginInit();
-                    bi.CacheOption = BitmapCacheOption.OnLoad;
-                    bi.StreamSource = ms;
-                    bi.EndInit();
-                    bi.Freeze();
-
-                    SetBackgroundImage(bi);
-                    DrawingCanvas.Children.Clear();
-                    DrawingCanvas.Children.Add(SelectionBoxBorder);
-                    _annotations.Clear();
-                    _currentStepNumber = 1;
-                    UpdateNextStepUI();
+                    BtnCaptureScreen.ContextMenu.PlacementTarget = BtnCaptureScreen;
+                    BtnCaptureScreen.ContextMenu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
+                    BtnCaptureScreen.ContextMenu.IsOpen = true;
                 }
             }
+        }
+
+        private void CaptureSelectedMonitor(MonitorItem mon)
+        {
+            Hide();
+            System.Threading.Thread.Sleep(150);
+
+            using var bmp = ScreenCaptureService.CaptureMonitor(mon);
+            var bs = ScreenCaptureService.BitmapToBitmapSource(bmp);
 
             Show();
-            TxtStatus.Text = "Скриншот всего экрана загружен на холст!";
+            Activate();
+
+            SetBackgroundImage(bs);
+            ResetCanvasAnnotations();
+            TxtStatus.Text = $"Снимок дисплея «{mon.FriendlyName}» ({bs.PixelWidth} × {bs.PixelHeight} px) загружен на холст!";
+        }
+
+        private void CaptureVirtualScreen()
+        {
+            Hide();
+            System.Threading.Thread.Sleep(150);
+
+            using var bmp = ScreenCaptureService.CaptureVirtualScreen();
+            var bs = ScreenCaptureService.BitmapToBitmapSource(bmp);
+
+            Show();
+            Activate();
+
+            SetBackgroundImage(bs);
+            ResetCanvasAnnotations();
+            TxtStatus.Text = $"Снимок всех экранов ({bs.PixelWidth} × {bs.PixelHeight} px) загружен на холст!";
         }
 
         private void BtnOpenFile_Click(object sender, RoutedEventArgs e)
@@ -193,50 +281,132 @@ namespace BCCScreenShot
             var dlg = new OpenFileDialog { Filter = "Изображения|*.png;*.jpg;*.jpeg;*.bmp" };
             if (dlg.ShowDialog() == true)
             {
-                var bi = new BitmapImage(new Uri(dlg.FileName));
+                var bi = new BitmapImage();
+                bi.BeginInit();
+                bi.UriSource = new Uri(dlg.FileName);
+                bi.CacheOption = BitmapCacheOption.OnLoad;
+                bi.EndInit();
+                bi.Freeze();
+
                 SetBackgroundImage(bi);
-                DrawingCanvas.Children.Clear();
-                DrawingCanvas.Children.Add(SelectionBoxBorder);
-                _annotations.Clear();
-                _currentStepNumber = 1;
-                UpdateNextStepUI();
-                TxtStatus.Text = "Файл открыт успешно!";
+                ResetCanvasAnnotations();
+                TxtStatus.Text = $"Файл загружен: {System.IO.Path.GetFileName(dlg.FileName)} ({bi.PixelWidth} × {bi.PixelHeight} px)";
             }
         }
 
         private void BtnDemo_Click(object sender, RoutedEventArgs e)
         {
             LoadDemoCanvas();
-            TxtStatus.Text = "Загружен демо-снимок!";
+            TxtStatus.Text = "Демо-холст загружен.";
         }
 
-        // Tool Selection
+        // Tools Selection
         private void Tool_Checked(object sender, RoutedEventArgs e)
         {
-            if (sender is RadioButton rb && rb.Tag is string tool)
+            if (sender is RadioButton rb && rb.Tag != null)
             {
-                _currentTool = tool;
                 CancelActiveDrawing();
+                _currentTool = rb.Tag.ToString()!;
                 if (_currentTool != "select")
                 {
                     ClearSelection();
                 }
-                if (TxtStatus != null)
-                    TxtStatus.Text = $"Выбран инструмент: {rb.Content} (Esc — скинуть на выбор)";
+
+                switch (_currentTool)
+                {
+                    case "select": TxtStatus.Text = "Режим выбора (Кликните по фигуре, Drag для перемещения, маркеры для изменения размера)."; break;
+                    case "arrow": TxtStatus.Text = "Инструмент: Стрелка (Кликните и потяните)."; break;
+                    case "callout": TxtStatus.Text = "Инструмент: Выноска (Кликните на цель, затем место для текста)."; break;
+                    case "step": TxtStatus.Text = "Инструмент: Порядковая метка (Кликните для размещения круга с номером)."; break;
+                    case "rect": TxtStatus.Text = "Инструмент: Рамка / Прямоугольник (Кликните и потяните)."; break;
+                    case "ellipse": TxtStatus.Text = "Инструмент: Овал / Круг (Кликните и потяните)."; break;
+                    case "line": TxtStatus.Text = "Инструмент: Прямая линия (Кликните и потяните)."; break;
+                    case "text": TxtStatus.Text = "Инструмент: Текстовый блок (Кликните для добавления текста)."; break;
+                    case "pencil": TxtStatus.Text = "Инструмент: Карандаш (Зажмите ЛКМ и рисуйте)."; break;
+                    case "highlighter": TxtStatus.Text = "Инструмент: Маркер-выделитель (Зажмите ЛКМ и выделяйте)."; break;
+                }
             }
         }
 
+        // Color Swatches
         private void ColorSwatch_Click(object sender, RoutedEventArgs e)
         {
             if (sender is Button btn && btn.Tag is string hex)
             {
                 _currentColor = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(hex);
                 ApplyStyleToSelectedElement();
+                TxtStatus.Text = $"Цвет изменен: {hex}";
             }
         }
 
+        // Callout Background Swatches & Presets
+        private void CalloutBgPreset_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button btn && btn.Tag is string tag)
+            {
+                if (tag == "accent")
+                {
+                    _currentCalloutBgColor = System.Windows.Media.Color.FromArgb(200, _currentColor.R, _currentColor.G, _currentColor.B);
+                }
+                else if (tag == "transparent")
+                {
+                    _currentCalloutBgColor = Colors.Transparent;
+                }
+                else
+                {
+                    _currentCalloutBgColor = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(tag);
+                }
+
+                ApplyCalloutBackgroundToSelected();
+                TxtStatus.Text = $"Фон выноски установлен: {btn.Content}";
+            }
+        }
+
+        private void CalloutBgColor_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button btn && btn.Tag is string hex)
+            {
+                _currentCalloutBgColor = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(hex);
+                ApplyCalloutBackgroundToSelected();
+                TxtStatus.Text = $"Фон выноски выбран: {hex}";
+            }
+        }
+
+        private void ApplyCalloutBackgroundToSelected()
+        {
+            if (_selectedElement is Canvas calloutCanvas && calloutCanvas.Children.Count >= 3)
+            {
+                if (calloutCanvas.Children[2] is Border card)
+                {
+                    card.Background = new SolidColorBrush(_currentCalloutBgColor);
+                    card.Tag = _currentCalloutBgColor;
+                    if (card.Child is TextBlock cardTb)
+                    {
+                        var strokeColor = (card.BorderBrush as SolidColorBrush)?.Color ?? _currentColor;
+                        cardTb.Foreground = GetContrastTextBrush(_currentCalloutBgColor, strokeColor);
+                    }
+                }
+            }
+        }
+
+        private Brush GetContrastTextBrush(System.Windows.Media.Color bgColor, System.Windows.Media.Color strokeColor)
+        {
+            if (bgColor.A < 30)
+            {
+                return new SolidColorBrush(strokeColor);
+            }
+            double luminance = (0.299 * bgColor.R + 0.587 * bgColor.G + 0.114 * bgColor.B) / 255.0;
+            if (luminance > 0.6)
+            {
+                return new SolidColorBrush(System.Windows.Media.Color.FromRgb(15, 23, 42));
+            }
+            return Brushes.White;
+        }
+
+        // Fill & Shading
         private void ChkEnableFill_Changed(object sender, RoutedEventArgs e)
         {
+            if (_isSyncingInspector) return;
             _isFillEnabled = ChkEnableFill.IsChecked == true;
             ApplyStyleToSelectedElement();
         }
@@ -244,21 +414,24 @@ namespace BCCScreenShot
         private void SliderFillOpacity_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
             _fillOpacity = e.NewValue;
-            if (TxtFillOpacityVal != null) TxtFillOpacityVal.Text = $"{ (int)_fillOpacity }% ";
+            if (TxtFillOpacityVal != null) TxtFillOpacityVal.Text = $"{(int)_fillOpacity}%";
+            if (_isSyncingInspector) return;
             ApplyStyleToSelectedElement();
         }
 
         private void SliderStroke_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
             _currentStrokeWidth = e.NewValue;
-            if (TxtStrokeVal != null) TxtStrokeVal.Text = $"{ (int)_currentStrokeWidth } px";
+            if (TxtStrokeVal != null) TxtStrokeVal.Text = $"{(int)_currentStrokeWidth} px";
+            if (_isSyncingInspector) return;
             ApplyStyleToSelectedElement();
         }
 
         private void SliderFont_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
             _currentFontSize = e.NewValue;
-            if (TxtFontVal != null) TxtFontVal.Text = $"{ (int)_currentFontSize } px";
+            if (TxtFontVal != null) TxtFontVal.Text = $"{(int)_currentFontSize} px";
+            if (_isSyncingInspector) return;
             ApplyStyleToSelectedElement();
         }
 
@@ -287,7 +460,46 @@ namespace BCCScreenShot
 
         private void ApplyStyleToSelectedElement()
         {
-            if (_selectedElement is Border b && b.Child is TextBlock tb)
+            if (_isSyncingInspector || _selectedElement == null) return;
+
+            if (_selectedElement is Canvas calloutCanvas && calloutCanvas.Children.Count >= 3)
+            {
+                if (calloutCanvas.Children[0] is Line line)
+                {
+                    line.Stroke = new SolidColorBrush(_currentColor);
+                    line.StrokeThickness = Math.Max(2, _currentStrokeWidth / 2.0);
+                }
+                if (calloutCanvas.Children[1] is Ellipse dot)
+                {
+                    dot.Fill = new SolidColorBrush(_currentColor);
+                }
+                if (calloutCanvas.Children[2] is Border card)
+                {
+                    card.BorderBrush = new SolidColorBrush(_currentColor);
+                    card.Background = new SolidColorBrush(_currentCalloutBgColor);
+                    card.Tag = _currentCalloutBgColor;
+                    if (card.Child is TextBlock cardTb)
+                    {
+                        cardTb.FontSize = _currentFontSize;
+                        cardTb.Foreground = GetContrastTextBrush(_currentCalloutBgColor, _currentColor);
+                    }
+                }
+                UpdateSelectionHighlight(_selectedElement);
+            }
+            else if (_selectedElement is System.Windows.Shapes.Path path && path.Tag is ArrowData arrowData)
+            {
+                path.Stroke = new SolidColorBrush(_currentColor);
+                path.StrokeThickness = _currentStrokeWidth;
+                path.Data = BuildArrowGeometry(arrowData.X1, arrowData.Y1, arrowData.X2, arrowData.Y2, _currentStrokeWidth);
+                UpdateSelectionHighlight(_selectedElement);
+            }
+            else if (_selectedElement is Line ln)
+            {
+                ln.Stroke = new SolidColorBrush(_currentColor);
+                ln.StrokeThickness = _currentStrokeWidth;
+                UpdateSelectionHighlight(_selectedElement);
+            }
+            else if (_selectedElement is Border b && b.Child is TextBlock tb)
             {
                 tb.Foreground = new SolidColorBrush(_currentColor);
                 tb.FontSize = _currentFontSize;
@@ -304,9 +516,121 @@ namespace BCCScreenShot
                 }
                 UpdateSelectionHighlight(_selectedElement);
             }
+            else if (_selectedElement is Grid grid && grid.Children.Count >= 2)
+            {
+                if (grid.Children[0] is Ellipse ellipse)
+                {
+                    ellipse.Fill = new SolidColorBrush(_currentColor);
+                }
+                if (grid.Children[1] is TextBlock stepTb)
+                {
+                    stepTb.FontSize = _currentFontSize;
+                }
+                UpdateSelectionHighlight(_selectedElement);
+            }
+            else if (_selectedElement is Polyline poly)
+            {
+                poly.Stroke = new SolidColorBrush(_currentColor);
+                poly.StrokeThickness = poly.Opacity < 0.9 ? _currentStrokeWidth * 3.5 : _currentStrokeWidth;
+                UpdateSelectionHighlight(_selectedElement);
+            }
         }
 
-        // Canvas Zooming with Ctrl + MouseWheel
+        private void SyncInspectorWithElement(UIElement elem)
+        {
+            _isSyncingInspector = true;
+            try
+            {
+                if (elem is Canvas calloutCanvas && calloutCanvas.Children.Count >= 3)
+                {
+                    if (calloutCanvas.Children[0] is Line line && line.Stroke is SolidColorBrush sb)
+                    {
+                        _currentColor = sb.Color;
+                        _currentStrokeWidth = Math.Max(1, line.StrokeThickness * 2.0);
+                        SliderStroke.Value = _currentStrokeWidth;
+                    }
+                    if (calloutCanvas.Children[2] is Border card)
+                    {
+                        if (card.Background is SolidColorBrush bgBrush)
+                        {
+                            _currentCalloutBgColor = bgBrush.Color;
+                        }
+                        if (card.Child is TextBlock tb)
+                        {
+                            _currentFontSize = tb.FontSize;
+                            SliderFont.Value = _currentFontSize;
+                        }
+                    }
+                }
+                else if (elem is System.Windows.Shapes.Path path)
+                {
+                    if (path.Stroke is SolidColorBrush sb)
+                    {
+                        _currentColor = sb.Color;
+                    }
+                    _currentStrokeWidth = path.StrokeThickness;
+                    SliderStroke.Value = _currentStrokeWidth;
+                }
+                else if (elem is Line ln)
+                {
+                    if (ln.Stroke is SolidColorBrush sb)
+                    {
+                        _currentColor = sb.Color;
+                    }
+                    _currentStrokeWidth = ln.StrokeThickness;
+                    SliderStroke.Value = _currentStrokeWidth;
+                }
+                else if (elem is Shape shape)
+                {
+                    if (shape.Stroke is SolidColorBrush sb)
+                    {
+                        _currentColor = sb.Color;
+                    }
+                    _currentStrokeWidth = shape.StrokeThickness;
+                    SliderStroke.Value = _currentStrokeWidth;
+
+                    if (shape.Fill is SolidColorBrush fillBrush)
+                    {
+                        ChkEnableFill.IsChecked = true;
+                        _isFillEnabled = true;
+                        _fillOpacity = Math.Round(fillBrush.Color.A / 2.55);
+                        SliderFillOpacity.Value = _fillOpacity;
+                    }
+                    else
+                    {
+                        ChkEnableFill.IsChecked = false;
+                        _isFillEnabled = false;
+                    }
+                }
+                else if (elem is Border border && border.Child is TextBlock tb)
+                {
+                    if (tb.Foreground is SolidColorBrush sb)
+                    {
+                        _currentColor = sb.Color;
+                    }
+                    _currentFontSize = tb.FontSize;
+                    SliderFont.Value = _currentFontSize;
+                }
+                else if (elem is Grid grid && grid.Children.Count >= 2)
+                {
+                    if (grid.Children[0] is Ellipse el && el.Fill is SolidColorBrush sb)
+                    {
+                        _currentColor = sb.Color;
+                    }
+                    if (grid.Children[1] is TextBlock stepTb)
+                    {
+                        _currentFontSize = stepTb.FontSize;
+                        SliderFont.Value = _currentFontSize;
+                    }
+                }
+            }
+            finally
+            {
+                _isSyncingInspector = false;
+            }
+        }
+
+        // Canvas Zooming
         private void CanvasScrollViewer_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
         {
             if (Keyboard.Modifiers == ModifierKeys.Control)
@@ -321,11 +645,44 @@ namespace BCCScreenShot
                     _zoomLevel = Math.Max(0.2, _zoomLevel - 0.1);
                 }
 
-                CanvasScaleTransform.ScaleX = _zoomLevel;
-                CanvasScaleTransform.ScaleY = _zoomLevel;
-                BtnResetZoom.Content = $"🔍 {(int)(_zoomLevel * 100)}%";
-                TxtStatus.Text = $"Масштаб: {(int)(_zoomLevel * 100)}% (Ctrl + 0 для сброса)";
+                ApplyZoomLevel();
             }
+        }
+
+        private void FitZoomToViewport()
+        {
+            if (_bgImage == null) return;
+
+            double availableW = CanvasScrollViewer.ActualWidth > 150 ? CanvasScrollViewer.ActualWidth - 60 : 800;
+            double availableH = CanvasScrollViewer.ActualHeight > 150 ? CanvasScrollViewer.ActualHeight - 60 : 500;
+
+            if (DrawingCanvas.Width > availableW || DrawingCanvas.Height > availableH)
+            {
+                double scaleX = availableW / DrawingCanvas.Width;
+                double scaleY = availableH / DrawingCanvas.Height;
+                _zoomLevel = Math.Round(Math.Min(scaleX, scaleY), 2);
+                if (_zoomLevel < 0.1) _zoomLevel = 0.1;
+                if (_zoomLevel > 1.0) _zoomLevel = 1.0;
+            }
+            else
+            {
+                _zoomLevel = 1.0;
+            }
+
+            ApplyZoomLevel();
+        }
+
+        private void ApplyZoomLevel()
+        {
+            CanvasScaleTransform.ScaleX = _zoomLevel;
+            CanvasScaleTransform.ScaleY = _zoomLevel;
+            BtnResetZoom.Content = $"🔍 {(int)(_zoomLevel * 100)}%";
+            TxtStatus.Text = $"Масштаб: {(int)(_zoomLevel * 100)}% (Ctrl + 0 — 100%)";
+        }
+
+        private void BtnFitZoom_Click(object sender, RoutedEventArgs e)
+        {
+            FitZoomToViewport();
         }
 
         private void BtnResetZoom_Click(object sender, RoutedEventArgs e)
@@ -342,66 +699,173 @@ namespace BCCScreenShot
             TxtStatus.Text = "Масштаб сброшен на 100%.";
         }
 
-        // Visual Selection Bounding Box Highlight
-        private void UpdateSelectionHighlight(UIElement? elem)
+        // Selection & Handle Management
+        private void SelectElement(UIElement? elem)
         {
-            if (elem == null || elem == DrawingCanvas || elem == SelectionBoxBorder)
-            {
-                SelectionBoxBorder.Visibility = Visibility.Collapsed;
-                return;
-            }
+            _selectedElement = elem;
+            UpdateSelectionHighlight(elem);
 
-            double left = Canvas.GetLeft(elem);
-            double top = Canvas.GetTop(elem);
-            double w = 0, h = 0;
-
-            if (elem is FrameworkElement fe)
+            if (elem != null)
             {
-                w = fe.ActualWidth > 0 ? fe.ActualWidth : fe.Width;
-                h = fe.ActualHeight > 0 ? fe.ActualHeight : fe.Height;
-            }
-
-            if (elem is Shape shape)
-            {
-                if (double.IsNaN(w) || w <= 0) w = shape.Width;
-                if (double.IsNaN(h) || h <= 0) h = shape.Height;
-                if (w <= 0 || h <= 0)
-                {
-                    var bounds = VisualTreeHelper.GetDescendantBounds(shape);
-                    left = bounds.Left;
-                    top = bounds.Top;
-                    w = bounds.Width;
-                    h = bounds.Height;
-                }
-            }
-
-            if (double.IsNaN(left)) left = 0;
-            if (double.IsNaN(top)) top = 0;
-
-            if (w > 0 && h > 0)
-            {
-                Canvas.SetLeft(SelectionBoxBorder, left - 4);
-                Canvas.SetTop(SelectionBoxBorder, top - 4);
-                SelectionBoxBorder.Width = w + 8;
-                SelectionBoxBorder.Height = h + 8;
-                SelectionBoxBorder.Visibility = Visibility.Visible;
-            }
-            else
-            {
-                SelectionBoxBorder.Visibility = Visibility.Collapsed;
+                SyncInspectorWithElement(elem);
+                TxtStatus.Text = "Элемент выделен. Измените цвет, толщину или потяните за маркеры для изменения размера.";
             }
         }
 
         private void ClearSelection()
         {
             _selectedElement = null;
+            HideAllHandles();
+        }
+
+        private void HideAllHandles()
+        {
             SelectionBoxBorder.Visibility = Visibility.Collapsed;
+            HandleTL.Visibility = Visibility.Collapsed;
+            HandleTR.Visibility = Visibility.Collapsed;
+            HandleBL.Visibility = Visibility.Collapsed;
+            HandleBR.Visibility = Visibility.Collapsed;
+            HandleP1.Visibility = Visibility.Collapsed;
+            HandleP2.Visibility = Visibility.Collapsed;
+        }
+
+        private void UpdateSelectionHighlight(UIElement? elem)
+        {
+            if (elem == null || elem == DrawingCanvas || elem == SelectionBoxBorder)
+            {
+                HideAllHandles();
+                return;
+            }
+
+            // Case A: Line
+            if (elem is Line line)
+            {
+                SelectionBoxBorder.Visibility = Visibility.Collapsed;
+                HandleTL.Visibility = Visibility.Collapsed;
+                HandleTR.Visibility = Visibility.Collapsed;
+                HandleBL.Visibility = Visibility.Collapsed;
+                HandleBR.Visibility = Visibility.Collapsed;
+
+                Canvas.SetLeft(HandleP1, line.X1 - 6);
+                Canvas.SetTop(HandleP1, line.Y1 - 6);
+                HandleP1.Visibility = Visibility.Visible;
+
+                Canvas.SetLeft(HandleP2, line.X2 - 6);
+                Canvas.SetTop(HandleP2, line.Y2 - 6);
+                HandleP2.Visibility = Visibility.Visible;
+                return;
+            }
+
+            // Case B: Arrow
+            if (elem is System.Windows.Shapes.Path path && path.Tag is ArrowData arrowData)
+            {
+                SelectionBoxBorder.Visibility = Visibility.Collapsed;
+                HandleTL.Visibility = Visibility.Collapsed;
+                HandleTR.Visibility = Visibility.Collapsed;
+                HandleBL.Visibility = Visibility.Collapsed;
+                HandleBR.Visibility = Visibility.Collapsed;
+
+                Canvas.SetLeft(HandleP1, arrowData.X1 - 6);
+                Canvas.SetTop(HandleP1, arrowData.Y1 - 6);
+                HandleP1.Visibility = Visibility.Visible;
+
+                Canvas.SetLeft(HandleP2, arrowData.X2 - 6);
+                Canvas.SetTop(HandleP2, arrowData.Y2 - 6);
+                HandleP2.Visibility = Visibility.Visible;
+                return;
+            }
+
+            // Case C: Box-based elements (Rectangle, Ellipse, Border Text, Step Grid, Callout)
+            HandleP1.Visibility = Visibility.Collapsed;
+            HandleP2.Visibility = Visibility.Collapsed;
+
+            double left = Canvas.GetLeft(elem);
+            double top = Canvas.GetTop(elem);
+            if (double.IsNaN(left)) left = 0;
+            if (double.IsNaN(top)) top = 0;
+
+            double w = 0, h = 0;
+            if (elem is FrameworkElement fe)
+            {
+                w = fe.Width;
+                h = fe.Height;
+                if (double.IsNaN(w) || w <= 0) w = fe.ActualWidth;
+                if (double.IsNaN(h) || h <= 0) h = fe.ActualHeight;
+            }
+
+            if (w <= 0 || h <= 0)
+            {
+                var bounds = VisualTreeHelper.GetDescendantBounds(elem);
+                w = Math.Max(10, bounds.Width);
+                h = Math.Max(10, bounds.Height);
+            }
+
+            Canvas.SetLeft(SelectionBoxBorder, left - 4);
+            Canvas.SetTop(SelectionBoxBorder, top - 4);
+            SelectionBoxBorder.Width = w + 8;
+            SelectionBoxBorder.Height = h + 8;
+            SelectionBoxBorder.Visibility = Visibility.Visible;
+
+            // Show corner handles for editable resizable shapes
+            if (elem is Rectangle || elem is Ellipse || (elem is Border border && !(border.Parent is Canvas)))
+            {
+                Canvas.SetLeft(HandleTL, left - 5);
+                Canvas.SetTop(HandleTL, top - 5);
+                HandleTL.Visibility = Visibility.Visible;
+
+                Canvas.SetLeft(HandleTR, left + w - 5);
+                Canvas.SetTop(HandleTR, top - 5);
+                HandleTR.Visibility = Visibility.Visible;
+
+                Canvas.SetLeft(HandleBL, left - 5);
+                Canvas.SetTop(HandleBL, top + h - 5);
+                HandleBL.Visibility = Visibility.Visible;
+
+                Canvas.SetLeft(HandleBR, left + w - 5);
+                Canvas.SetTop(HandleBR, top + h - 5);
+                HandleBR.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                HandleTL.Visibility = Visibility.Collapsed;
+                HandleTR.Visibility = Visibility.Collapsed;
+                HandleBL.Visibility = Visibility.Collapsed;
+                HandleBR.Visibility = Visibility.Collapsed;
+            }
+        }
+
+        // Handle Mouse Events for Resizing
+        private void Handle_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is FrameworkElement fe)
+            {
+                e.Handled = true;
+                _activeHandleName = fe.Name;
+                fe.CaptureMouse();
+                TxtStatus.Text = "Изменение размера / положения аннотации...";
+            }
+        }
+
+        private void Handle_MouseUp(object sender, MouseButtonEventArgs e)
+        {
+            if (_activeHandleName != null)
+            {
+                if (sender is FrameworkElement fe)
+                {
+                    fe.ReleaseMouseCapture();
+                }
+                _activeHandleName = null;
+                UpdateSelectionHighlight(_selectedElement);
+                TxtStatus.Text = "Размер аннотации изменен.";
+            }
         }
 
         private void DeleteSelectedElement()
         {
             if (_selectedElement != null)
             {
+                _undoStack.Push(new List<UIElement>(_annotations));
+                _redoStack.Clear();
                 DrawingCanvas.Children.Remove(_selectedElement);
                 _annotations.Remove(_selectedElement);
                 ClearSelection();
@@ -437,8 +901,8 @@ namespace BCCScreenShot
             {
                 double left = Canvas.GetLeft(border);
                 double top = Canvas.GetTop(border);
-                var color = (tb.Foreground as SolidColorBrush)?.Color ?? _currentColor;
-                return CreateEditableTextBlock(tb.Text, left, top, color, tb.FontSize);
+                var color = (border.BorderBrush as SolidColorBrush)?.Color ?? _currentColor;
+                return CreateEditableTextBlock(tb.Text, left + 15, top + 15, color, tb.FontSize);
             }
             else if (original is Grid grid && grid.Children.Count >= 2 && grid.Children[1] is TextBlock stepTb)
             {
@@ -446,7 +910,7 @@ namespace BCCScreenShot
                 double top = Canvas.GetTop(grid) + 17;
                 var color = ((grid.Children[0] as Ellipse)?.Fill as SolidColorBrush)?.Color ?? _currentColor;
                 int.TryParse(stepTb.Text, out int num);
-                var badge = CreateStepBadge(left, top, color, num > 0 ? num : _currentStepNumber);
+                var badge = CreateStepBadge(left + 20, top + 20, color, num > 0 ? num : _currentStepNumber);
                 if (badge is Grid newGrid && newGrid.Children[1] is TextBlock newTb)
                 {
                     newTb.Text = stepTb.Text;
@@ -461,30 +925,17 @@ namespace BCCScreenShot
 
                 if (line != null && card != null && cardTb != null)
                 {
-                    double x1 = line.X1; double y1 = line.Y1;
-                    double x2 = Canvas.GetLeft(card); double y2 = Canvas.GetTop(card);
-                    var color = (cardTb.Foreground as SolidColorBrush)?.Color ?? _currentColor;
-                    return CreateCalloutElement(x1, y1, x2, y2, color, cardTb.Text, cardTb.FontSize);
+                    double x1 = line.X1 + 20; double y1 = line.Y1 + 20;
+                    double x2 = Canvas.GetLeft(card) + 20; double y2 = Canvas.GetTop(card) + 20;
+                    var color = (card.BorderBrush as SolidColorBrush)?.Color ?? _currentColor;
+                    var bg = (card.Background as SolidColorBrush)?.Color ?? _currentCalloutBgColor;
+                    return CreateCalloutElement(x1, y1, x2, y2, color, cardTb.Text, cardTb.FontSize, bg);
                 }
             }
-            else if (original is System.Windows.Shapes.Path path)
+            else if (original is System.Windows.Shapes.Path path && path.Tag is ArrowData arrowData)
             {
-                double left = Canvas.GetLeft(path);
-                double top = Canvas.GetTop(path);
-                var stroke = path.Stroke as SolidColorBrush;
-                var clonePath = new System.Windows.Shapes.Path
-                {
-                    Data = path.Data.Clone(),
-                    Stroke = stroke != null ? new SolidColorBrush(stroke.Color) : new SolidColorBrush(_currentColor),
-                    Fill = path.Fill != null ? new SolidColorBrush(((SolidColorBrush)path.Fill).Color) : null,
-                    StrokeThickness = path.StrokeThickness,
-                    StrokeStartLineCap = path.StrokeStartLineCap,
-                    StrokeEndLineCap = path.StrokeEndLineCap,
-                    StrokeLineJoin = path.StrokeLineJoin
-                };
-                if (!double.IsNaN(left)) Canvas.SetLeft(clonePath, left);
-                if (!double.IsNaN(top)) Canvas.SetTop(clonePath, top);
-                return clonePath;
+                var stroke = (path.Stroke as SolidColorBrush)?.Color ?? _currentColor;
+                return CreateArrow(arrowData.X1 + 20, arrowData.Y1 + 20, arrowData.X2 + 20, arrowData.Y2 + 20, stroke, path.StrokeThickness);
             }
             else if (original is Rectangle rect)
             {
@@ -496,10 +947,11 @@ namespace BCCScreenShot
                     Width = rect.Width, Height = rect.Height,
                     Stroke = stroke != null ? new SolidColorBrush(stroke.Color) : new SolidColorBrush(_currentColor),
                     Fill = rect.Fill != null ? new SolidColorBrush(((SolidColorBrush)rect.Fill).Color) : null,
-                    StrokeThickness = rect.StrokeThickness
+                    StrokeThickness = rect.StrokeThickness,
+                    Cursor = Cursors.SizeAll
                 };
-                Canvas.SetLeft(cloneRect, left);
-                Canvas.SetTop(cloneRect, top);
+                Canvas.SetLeft(cloneRect, left + 15);
+                Canvas.SetTop(cloneRect, top + 15);
                 return cloneRect;
             }
             else if (original is Ellipse ellipse)
@@ -512,10 +964,11 @@ namespace BCCScreenShot
                     Width = ellipse.Width, Height = ellipse.Height,
                     Stroke = stroke != null ? new SolidColorBrush(stroke.Color) : new SolidColorBrush(_currentColor),
                     Fill = ellipse.Fill != null ? new SolidColorBrush(((SolidColorBrush)ellipse.Fill).Color) : null,
-                    StrokeThickness = ellipse.StrokeThickness
+                    StrokeThickness = ellipse.StrokeThickness,
+                    Cursor = Cursors.SizeAll
                 };
-                Canvas.SetLeft(cloneEllipse, left);
-                Canvas.SetTop(cloneEllipse, top);
+                Canvas.SetLeft(cloneEllipse, left + 15);
+                Canvas.SetTop(cloneEllipse, top + 15);
                 return cloneEllipse;
             }
             else if (original is Line line)
@@ -523,98 +976,89 @@ namespace BCCScreenShot
                 var stroke = line.Stroke as SolidColorBrush;
                 return new Line
                 {
-                    X1 = line.X1, Y1 = line.Y1, X2 = line.X2, Y2 = line.Y2,
+                    X1 = line.X1 + 20, Y1 = line.Y1 + 20, X2 = line.X2 + 20, Y2 = line.Y2 + 20,
                     Stroke = stroke != null ? new SolidColorBrush(stroke.Color) : new SolidColorBrush(_currentColor),
                     StrokeThickness = line.StrokeThickness,
-                    StrokeStartLineCap = line.StrokeStartLineCap,
-                    StrokeEndLineCap = line.StrokeEndLineCap
+                    StrokeStartLineCap = PenLineCap.Round,
+                    StrokeEndLineCap = PenLineCap.Round,
+                    Cursor = Cursors.SizeAll
                 };
-            }
-            else if (original is Polyline polyline)
-            {
-                var stroke = polyline.Stroke as SolidColorBrush;
-                var clonePoly = new Polyline
-                {
-                    Stroke = stroke != null ? new SolidColorBrush(stroke.Color) : new SolidColorBrush(_currentColor),
-                    StrokeThickness = polyline.StrokeThickness,
-                    StrokeStartLineCap = polyline.StrokeStartLineCap,
-                    StrokeEndLineCap = polyline.StrokeEndLineCap,
-                    StrokeLineJoin = polyline.StrokeLineJoin,
-                    Opacity = polyline.Opacity
-                };
-                foreach (var p in polyline.Points)
-                {
-                    clonePoly.Points.Add(p);
-                }
-                return clonePoly;
             }
 
             return null;
         }
 
-        // Canvas Mouse Events (Supports both 2-Click Stage Placement, Drag-Release Placement, and Ctrl + Drag Duplication)
+        // Canvas Mouse Events
         private void Canvas_MouseDown(object sender, MouseButtonEventArgs e)
         {
-            System.Windows.Point current = e.GetPosition(DrawingCanvas);
-
-            // If 2-Stage Drawing is already active, THIS IS CLICK #2! Finalize immediately.
-            if (_isTwoStageActive)
+            // If clicking a resize handle, let Handle_MouseDown take it
+            if (e.Source == HandleTL || e.Source == HandleTR || e.Source == HandleBL || e.Source == HandleBR || e.Source == HandleP1 || e.Source == HandleP2)
             {
-                FinalizeActiveDrawing(current);
                 return;
             }
 
-            if (_currentTool == "select")
+            System.Windows.Point current = e.GetPosition(DrawingCanvas);
+
+            // Check if user clicked directly on an existing annotation
+            var hit = e.Source as UIElement;
+            if (hit != null && hit != DrawingCanvas && hit != SelectionBoxBorder)
             {
-                var hit = e.Source as UIElement;
-                if (hit != null && hit != DrawingCanvas && hit != SelectionBoxBorder)
+                DependencyObject target = hit;
+                while (target != null && VisualTreeHelper.GetParent(target) != null && VisualTreeHelper.GetParent(target) != DrawingCanvas)
                 {
-                    DependencyObject target = hit;
-                    while (target != null && VisualTreeHelper.GetParent(target) != null && VisualTreeHelper.GetParent(target) != DrawingCanvas)
-                    {
-                        target = VisualTreeHelper.GetParent(target);
-                    }
+                    target = VisualTreeHelper.GetParent(target);
+                }
 
-                    var targetElem = target as UIElement;
+                var targetElem = target as UIElement;
+                if (targetElem != null && _annotations.Contains(targetElem))
+                {
+                    // Existing annotation clicked! Select it immediately!
+                    SelectElement(targetElem);
+                    ToolSelect.IsChecked = true;
 
-                    // Ctrl + Drag to Duplicate Element!
-                    if (Keyboard.Modifiers == ModifierKeys.Control && targetElem != null)
+                    // Ctrl + Drag to Duplicate
+                    if (Keyboard.Modifiers == ModifierKeys.Control)
                     {
                         var clone = CloneUIElement(targetElem);
                         if (clone != null)
                         {
                             AddAnnotation(clone);
                             targetElem = clone;
+                            SelectElement(targetElem);
                             TxtStatus.Text = "Элемент скопирован и перемещается (Ctrl + Drag).";
                         }
                     }
 
-                    _selectedElement = targetElem;
-                    UpdateSelectionHighlight(_selectedElement);
-
                     _isDraggingElement = true;
                     _startPoint = current;
-                    double elemLeft = Canvas.GetLeft(_selectedElement!);
-                    double elemTop = Canvas.GetTop(_selectedElement!);
+                    _dragLastPoint = current;
+
+                    double elemLeft = Canvas.GetLeft(targetElem);
+                    double elemTop = Canvas.GetTop(targetElem);
                     if (double.IsNaN(elemLeft)) elemLeft = 0;
                     if (double.IsNaN(elemTop)) elemTop = 0;
 
-                    _dragOffset = new System.Windows.Point(_startPoint.X - elemLeft, _startPoint.Y - elemTop);
-                    if (Keyboard.Modifiers != ModifierKeys.Control)
-                    {
-                        TxtStatus.Text = "Элемент выделен. (Delete для удаления, Ctrl + Drag для копирования)";
-                    }
+                    _dragOffset = new System.Windows.Point(current.X - elemLeft, current.Y - elemTop);
+                    return;
                 }
-                else
-                {
-                    ClearSelection();
-                }
+            }
+
+            // Clicked on empty canvas in Select mode -> clear selection
+            if (_currentTool == "select")
+            {
+                ClearSelection();
+                return;
+            }
+
+            // Clicked on empty canvas in Drawing mode
+            if (_isTwoStageActive)
+            {
+                FinalizeActiveDrawing(current);
                 return;
             }
 
             ClearSelection();
 
-            // Start 2-Stage Click 1
             _startPoint = current;
             _isTwoStageActive = true;
             _isDrawing = true;
@@ -624,6 +1068,8 @@ namespace BCCScreenShot
                 var badge = CreateStepBadge(_startPoint.X, _startPoint.Y, _currentColor, _currentStepNumber++);
                 UpdateNextStepUI();
                 AddAnnotation(badge);
+                SelectElement(badge);
+                ToolSelect.IsChecked = true;
                 _isTwoStageActive = false;
                 _isDrawing = false;
                 return;
@@ -633,10 +1079,10 @@ namespace BCCScreenShot
             {
                 var txtElem = CreateEditableTextBlock("Введите текст\n(Ctrl+Enter — сохранить)", _startPoint.X, _startPoint.Y, _currentColor, _currentFontSize);
                 AddAnnotation(txtElem);
+                SelectElement(txtElem);
                 _isTwoStageActive = false;
                 _isDrawing = false;
-                
-                // Immediately open text editor and switch to select mode
+
                 if (txtElem is Border border && border.Child is TextBlock tb)
                 {
                     StartInlineTextEdit(border, tb);
@@ -655,28 +1101,134 @@ namespace BCCScreenShot
                     StrokeStartLineCap = PenLineCap.Round,
                     StrokeEndLineCap = PenLineCap.Round,
                     Opacity = _currentTool == "highlighter" ? 0.40 : 1.0,
-                    IsHitTestVisible = false
+                    IsHitTestVisible = false,
+                    Cursor = Cursors.SizeAll
                 };
                 _activePolyline.Points.Add(_startPoint);
                 DrawingCanvas.Children.Add(_activePolyline);
                 return;
             }
 
-            TxtStatus.Text = "Начальная точка задана (Клик 1). Двигайте мышь и кликните повторно для фиксации (Esc — отмена).";
+            TxtStatus.Text = "Начальная точка задана. Двигайте мышь и кликните повторно для фиксации (Esc — отмена).";
         }
 
         private void Canvas_MouseMove(object sender, System.Windows.Input.MouseEventArgs e)
         {
             System.Windows.Point current = e.GetPosition(DrawingCanvas);
 
+            // Handle active handle resizing
+            if (_activeHandleName != null && _selectedElement != null)
+            {
+                if (_selectedElement is Line line)
+                {
+                    if (_activeHandleName == "HandleP1")
+                    {
+                        line.X1 = current.X;
+                        line.Y1 = current.Y;
+                    }
+                    else if (_activeHandleName == "HandleP2")
+                    {
+                        line.X2 = current.X;
+                        line.Y2 = current.Y;
+                    }
+                    UpdateSelectionHighlight(line);
+                    return;
+                }
+                else if (_selectedElement is System.Windows.Shapes.Path path && path.Tag is ArrowData arrowData)
+                {
+                    if (_activeHandleName == "HandleP1")
+                    {
+                        arrowData.X1 = current.X;
+                        arrowData.Y1 = current.Y;
+                    }
+                    else if (_activeHandleName == "HandleP2")
+                    {
+                        arrowData.X2 = current.X;
+                        arrowData.Y2 = current.Y;
+                    }
+                    path.Data = BuildArrowGeometry(arrowData.X1, arrowData.Y1, arrowData.X2, arrowData.Y2, path.StrokeThickness);
+                    UpdateSelectionHighlight(path);
+                    return;
+                }
+                else if (_selectedElement is FrameworkElement boxElem)
+                {
+                    double left = Canvas.GetLeft(boxElem);
+                    double top = Canvas.GetTop(boxElem);
+                    if (double.IsNaN(left)) left = 0;
+                    if (double.IsNaN(top)) top = 0;
+                    double w = boxElem.Width;
+                    double h = boxElem.Height;
+                    if (double.IsNaN(w) || w <= 0) w = boxElem.ActualWidth;
+                    if (double.IsNaN(h) || h <= 0) h = boxElem.ActualHeight;
+
+                    double right = left + w;
+                    double bottom = top + h;
+
+                    switch (_activeHandleName)
+                    {
+                        case "HandleBR":
+                            boxElem.Width = Math.Max(10, current.X - left);
+                            boxElem.Height = Math.Max(10, current.Y - top);
+                            break;
+                        case "HandleTL":
+                            double newL = Math.Min(right - 10, current.X);
+                            double newT = Math.Min(bottom - 10, current.Y);
+                            Canvas.SetLeft(boxElem, newL);
+                            Canvas.SetTop(boxElem, newT);
+                            boxElem.Width = right - newL;
+                            boxElem.Height = bottom - newT;
+                            break;
+                        case "HandleTR":
+                            double newTop = Math.Min(bottom - 10, current.Y);
+                            Canvas.SetTop(boxElem, newTop);
+                            boxElem.Width = Math.Max(10, current.X - left);
+                            boxElem.Height = bottom - newTop;
+                            break;
+                        case "HandleBL":
+                            double newLeft = Math.Min(right - 10, current.X);
+                            Canvas.SetLeft(boxElem, newLeft);
+                            boxElem.Width = right - newLeft;
+                            boxElem.Height = Math.Max(10, current.Y - top);
+                            break;
+                    }
+                    UpdateSelectionHighlight(boxElem);
+                    return;
+                }
+            }
+
+            // Handle moving element
             if (_isDraggingElement && _selectedElement != null)
             {
-                double newL = current.X - _dragOffset.X;
-                double newT = current.Y - _dragOffset.Y;
-                Canvas.SetLeft(_selectedElement, newL);
-                Canvas.SetTop(_selectedElement, newT);
-                UpdateSelectionHighlight(_selectedElement);
-                return;
+                if (_selectedElement is Line line)
+                {
+                    double dx = current.X - _dragLastPoint.X;
+                    double dy = current.Y - _dragLastPoint.Y;
+                    line.X1 += dx; line.Y1 += dy;
+                    line.X2 += dx; line.Y2 += dy;
+                    _dragLastPoint = current;
+                    UpdateSelectionHighlight(line);
+                    return;
+                }
+                else if (_selectedElement is System.Windows.Shapes.Path path && path.Tag is ArrowData arrowData)
+                {
+                    double dx = current.X - _dragLastPoint.X;
+                    double dy = current.Y - _dragLastPoint.Y;
+                    arrowData.X1 += dx; arrowData.Y1 += dy;
+                    arrowData.X2 += dx; arrowData.Y2 += dy;
+                    path.Data = BuildArrowGeometry(arrowData.X1, arrowData.Y1, arrowData.X2, arrowData.Y2, path.StrokeThickness);
+                    _dragLastPoint = current;
+                    UpdateSelectionHighlight(path);
+                    return;
+                }
+                else
+                {
+                    double newL = current.X - _dragOffset.X;
+                    double newT = current.Y - _dragOffset.Y;
+                    Canvas.SetLeft(_selectedElement, newL);
+                    Canvas.SetTop(_selectedElement, newT);
+                    UpdateSelectionHighlight(_selectedElement);
+                    return;
+                }
             }
 
             if (!_isDrawing && !_isTwoStageActive) return;
@@ -714,11 +1266,12 @@ namespace BCCScreenShot
                         Stroke = new SolidColorBrush(_currentColor),
                         StrokeThickness = _currentStrokeWidth,
                         StrokeStartLineCap = PenLineCap.Round,
-                        StrokeEndLineCap = PenLineCap.Round
+                        StrokeEndLineCap = PenLineCap.Round,
+                        Cursor = Cursors.SizeAll
                     };
                     break;
                 case "callout":
-                    _activePreviewElement = CreateCalloutElement(_startPoint.X, _startPoint.Y, current.X, current.Y, _currentColor, "Введите выноску\n(Ctrl+Enter)", _currentFontSize);
+                    _activePreviewElement = CreateCalloutElement(_startPoint.X, _startPoint.Y, current.X, current.Y, _currentColor, "Введите выноску\n(Ctrl+Enter)", _currentFontSize, _currentCalloutBgColor);
                     break;
                 case "rect":
                     var rect = new Rectangle
@@ -726,7 +1279,8 @@ namespace BCCScreenShot
                         Width = width, Height = height,
                         Stroke = new SolidColorBrush(_currentColor),
                         StrokeThickness = _currentStrokeWidth,
-                        Fill = GetCurrentFillBrush()
+                        Fill = GetCurrentFillBrush(),
+                        Cursor = Cursors.SizeAll
                     };
                     Canvas.SetLeft(rect, left); Canvas.SetTop(rect, top);
                     _activePreviewElement = rect;
@@ -737,7 +1291,8 @@ namespace BCCScreenShot
                         Width = width, Height = height,
                         Stroke = new SolidColorBrush(_currentColor),
                         StrokeThickness = _currentStrokeWidth,
-                        Fill = GetCurrentFillBrush()
+                        Fill = GetCurrentFillBrush(),
+                        Cursor = Cursors.SizeAll
                     };
                     Canvas.SetLeft(ellipse, left); Canvas.SetTop(ellipse, top);
                     _activePreviewElement = ellipse;
@@ -746,7 +1301,6 @@ namespace BCCScreenShot
 
             if (_activePreviewElement != null)
             {
-                // Disable hit-testing during active preview so click 2 hits the canvas directly!
                 _activePreviewElement.IsHitTestVisible = false;
                 DrawingCanvas.Children.Add(_activePreviewElement);
             }
@@ -754,12 +1308,26 @@ namespace BCCScreenShot
 
         private void Canvas_MouseUp(object sender, MouseButtonEventArgs e)
         {
+            if (_activeHandleName != null)
+            {
+                HandleTL.ReleaseMouseCapture();
+                HandleTR.ReleaseMouseCapture();
+                HandleBL.ReleaseMouseCapture();
+                HandleBR.ReleaseMouseCapture();
+                HandleP1.ReleaseMouseCapture();
+                HandleP2.ReleaseMouseCapture();
+                _activeHandleName = null;
+                UpdateSelectionHighlight(_selectedElement);
+            }
+
             _isDraggingElement = false;
 
             if (_activePolyline != null)
             {
                 _activePolyline.IsHitTestVisible = true;
                 AddAnnotation(_activePolyline);
+                SelectElement(_activePolyline);
+                ToolSelect.IsChecked = true;
                 _activePolyline = null;
                 _isDrawing = false;
                 _isTwoStageActive = false;
@@ -769,7 +1337,6 @@ namespace BCCScreenShot
             System.Windows.Point current = e.GetPosition(DrawingCanvas);
             double dist = Math.Sqrt(Math.Pow(current.X - _startPoint.X, 2) + Math.Pow(current.Y - _startPoint.Y, 2));
 
-            // If mouse was dragged > 14px, finalize placement on MouseUp (drag & release mode)
             if (dist > 14 && _isTwoStageActive)
             {
                 FinalizeActiveDrawing(current);
@@ -788,9 +1355,12 @@ namespace BCCScreenShot
                 DrawingCanvas.Children.Remove(_activePreviewElement);
                 _activePreviewElement = null;
 
-                // Re-enable hit testing for the finalized element
                 finalElem.IsHitTestVisible = true;
                 AddAnnotation(finalElem);
+
+                // Auto-select newly created element and switch to Select tool
+                SelectElement(finalElem);
+                ToolSelect.IsChecked = true;
 
                 if (_currentTool == "callout")
                 {
@@ -805,18 +1375,18 @@ namespace BCCScreenShot
                             }
                         }
                     }
-                    ToolSelect.IsChecked = true;
                 }
             }
 
             _isTwoStageActive = false;
             _isDrawing = false;
-            TxtStatus.Text = "Элемент успешно размещен!";
+            TxtStatus.Text = "Элемент размещен и выделен. Вы можете изменить его цвет, размер или стиль в правой панели.";
         }
 
         private void AddAnnotation(UIElement elem)
         {
             _undoStack.Push(new List<UIElement>(_annotations));
+            _redoStack.Clear();
             _annotations.Add(elem);
             if (!DrawingCanvas.Children.Contains(elem))
             {
@@ -824,8 +1394,8 @@ namespace BCCScreenShot
             }
         }
 
-        // Factory Methods: Sleek Professional Vector Arrow
-        private UIElement CreateArrow(double x1, double y1, double x2, double y2, System.Windows.Media.Color color, double thickness)
+        // Factory: Vector Arrow with dynamic geometry
+        private static GeometryGroup BuildArrowGeometry(double x1, double y1, double x2, double y2, double thickness)
         {
             double dx = x2 - x1;
             double dy = y2 - y1;
@@ -834,7 +1404,7 @@ namespace BCCScreenShot
 
             double angle = Math.Atan2(dy, dx);
             double headLen = Math.Max(14, thickness * 3.5);
-            double arrowAngle = 0.42; // ~24 degrees
+            double arrowAngle = 0.42;
 
             System.Windows.Point pArrow1 = new System.Windows.Point(x2 - headLen * Math.Cos(angle - arrowAngle), y2 - headLen * Math.Sin(angle - arrowAngle));
             System.Windows.Point pArrow2 = new System.Windows.Point(x2 - headLen * Math.Cos(angle + arrowAngle), y2 - headLen * Math.Sin(angle + arrowAngle));
@@ -843,28 +1413,37 @@ namespace BCCScreenShot
             geom.Children.Add(new LineGeometry(new System.Windows.Point(x1, y1), new System.Windows.Point(x2, y2)));
             geom.Children.Add(new LineGeometry(new System.Windows.Point(x2, y2), pArrow1));
             geom.Children.Add(new LineGeometry(new System.Windows.Point(x2, y2), pArrow2));
+            return geom;
+        }
 
-            return new System.Windows.Shapes.Path
+        private UIElement CreateArrow(double x1, double y1, double x2, double y2, System.Windows.Media.Color color, double thickness)
+        {
+            var geom = BuildArrowGeometry(x1, y1, x2, y2, thickness);
+            var path = new System.Windows.Shapes.Path
             {
                 Data = geom,
                 Stroke = new SolidColorBrush(color),
                 StrokeThickness = thickness,
                 StrokeStartLineCap = PenLineCap.Round,
                 StrokeEndLineCap = PenLineCap.Round,
-                StrokeLineJoin = PenLineJoin.Round
+                StrokeLineJoin = PenLineJoin.Round,
+                Cursor = Cursors.SizeAll,
+                Tag = new ArrowData { X1 = x1, Y1 = y1, X2 = x2, Y2 = y2 }
             };
+            return path;
         }
 
-        // Factory Method: Callout Badge with Interactive Independent Dragging for Target Pointer & Text Card
-        private UIElement CreateCalloutElement(double x1, double y1, double x2, double y2, System.Windows.Media.Color color, string text, double fontSize)
+        // Factory: Callout
+        private UIElement CreateCalloutElement(double x1, double y1, double x2, double y2, System.Windows.Media.Color color, string text, double fontSize, System.Windows.Media.Color? bgColor = null)
         {
+            var calloutBg = bgColor ?? _currentCalloutBgColor;
             var calloutCanvas = new Canvas();
 
             var leaderLine = new Line
             {
                 X1 = x1, Y1 = y1, X2 = x2 + 30, Y2 = y2 + 15,
                 Stroke = new SolidColorBrush(color),
-                StrokeThickness = 2,
+                StrokeThickness = Math.Max(2, _currentStrokeWidth / 2.0),
                 StrokeDashArray = new DoubleCollection { 4, 3 }
             };
 
@@ -881,19 +1460,20 @@ namespace BCCScreenShot
 
             var border = new Border
             {
-                Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(235, 15, 23, 42)),
+                Background = new SolidColorBrush(calloutBg),
                 BorderBrush = new SolidColorBrush(color),
                 BorderThickness = new Thickness(2),
                 CornerRadius = new CornerRadius(10),
                 Padding = new Thickness(10, 6, 10, 6),
                 Cursor = Cursors.SizeAll,
-                MinWidth = 110
+                MinWidth = 110,
+                Tag = calloutBg
             };
 
             var tb = new TextBlock
             {
                 Text = text,
-                Foreground = new SolidColorBrush(color),
+                Foreground = GetContrastTextBrush(calloutBg, color),
                 FontSize = fontSize,
                 FontWeight = FontWeights.Bold,
                 TextWrapping = TextWrapping.Wrap
@@ -903,7 +1483,6 @@ namespace BCCScreenShot
             Canvas.SetLeft(border, x2);
             Canvas.SetTop(border, y2);
 
-            // Dragging Target Pointer Handle Dot (x1, y1)
             bool isDraggingDot = false;
 
             targetDot.MouseLeftButtonDown += (s, e) =>
@@ -911,6 +1490,7 @@ namespace BCCScreenShot
                 e.Handled = true;
                 isDraggingDot = true;
                 targetDot.CaptureMouse();
+                SelectElement(calloutCanvas);
             };
 
             targetDot.MouseMove += (s, e) =>
@@ -935,9 +1515,9 @@ namespace BCCScreenShot
                 }
             };
 
-            // Double Click to Edit Text
             border.MouseLeftButtonDown += (s, e) =>
             {
+                SelectElement(calloutCanvas);
                 if (e.ClickCount == 2)
                 {
                     e.Handled = true;
@@ -952,28 +1532,34 @@ namespace BCCScreenShot
             return calloutCanvas;
         }
 
-        // Factory Method: Editable Step Badge (Double Click to Edit Number/Text!)
+        // Factory: Step Badge
         private UIElement CreateStepBadge(double x, double y, System.Windows.Media.Color color, int stepNum)
         {
             var grid = new Grid { Width = 34, Height = 34, Cursor = Cursors.SizeAll };
             var ellipse = new Ellipse
             {
+                Width = 34, Height = 34,
                 Fill = new SolidColorBrush(color),
-                Stroke = Brushes.White, StrokeThickness = 2
+                Stroke = Brushes.White,
+                StrokeThickness = 2
             };
+
             var txt = new TextBlock
             {
                 Text = stepNum.ToString(),
                 Foreground = Brushes.White,
-                FontWeight = FontWeights.Bold, FontSize = 14,
+                FontSize = 14,
+                FontWeight = FontWeights.Bold,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center
             };
+
             grid.Children.Add(ellipse);
             grid.Children.Add(txt);
 
             grid.MouseLeftButtonDown += (s, e) =>
             {
+                SelectElement(grid);
                 if (e.ClickCount == 2)
                 {
                     e.Handled = true;
@@ -1033,7 +1619,7 @@ namespace BCCScreenShot
             editBox.LostFocus += (s, e) => commitStep();
         }
 
-        // Editable Text Block Control with Multi-Line Double-Click Inline Editor
+        // Factory: Editable Text Block
         private UIElement CreateEditableTextBlock(string text, double x, double y, System.Windows.Media.Color color, double fontSize)
         {
             var border = new Border
@@ -1059,6 +1645,7 @@ namespace BCCScreenShot
 
             border.MouseLeftButtonDown += (s, e) =>
             {
+                SelectElement(border);
                 if (e.ClickCount == 2)
                 {
                     e.Handled = true;
@@ -1124,35 +1711,47 @@ namespace BCCScreenShot
         {
             if (_undoStack.Count > 0)
             {
+                _redoStack.Push(new List<UIElement>(_annotations));
                 var lastState = _undoStack.Pop();
-                DrawingCanvas.Children.Clear();
-                DrawingCanvas.Children.Add(SelectionBoxBorder);
-                _annotations.Clear();
+                ResetCanvasAnnotations();
                 foreach (var item in lastState)
                 {
                     _annotations.Add(item);
                     DrawingCanvas.Children.Add(item);
                 }
                 ClearSelection();
-                TxtStatus.Text = "Действие отменено.";
+                TxtStatus.Text = "Действие отменено (Ctrl+Z).";
+            }
+        }
+
+        private void BtnRedo_Click(object sender, RoutedEventArgs e)
+        {
+            if (_redoStack.Count > 0)
+            {
+                _undoStack.Push(new List<UIElement>(_annotations));
+                var nextState = _redoStack.Pop();
+                ResetCanvasAnnotations();
+                foreach (var item in nextState)
+                {
+                    _annotations.Add(item);
+                    DrawingCanvas.Children.Add(item);
+                }
+                ClearSelection();
+                TxtStatus.Text = "Действие возвращено (Ctrl+Y).";
             }
         }
 
         private void BtnClear_Click(object sender, RoutedEventArgs e)
         {
             _undoStack.Push(new List<UIElement>(_annotations));
-            _annotations.Clear();
-            DrawingCanvas.Children.Clear();
-            DrawingCanvas.Children.Add(SelectionBoxBorder);
-            _currentStepNumber = 1;
-            UpdateNextStepUI();
-            ClearSelection();
+            _redoStack.Clear();
+            ResetCanvasAnnotations();
             TxtStatus.Text = "Все аннотации очищены.";
         }
 
         private RenderTargetBitmap RenderCanvasToBitmap()
         {
-            SelectionBoxBorder.Visibility = Visibility.Collapsed;
+            HideAllHandles();
 
             int w = (int)DrawingCanvas.Width;
             int h = (int)DrawingCanvas.Height;
@@ -1171,7 +1770,7 @@ namespace BCCScreenShot
         {
             var rtb = RenderCanvasToBitmap();
             Clipboard.SetImage(rtb);
-            TxtStatus.Text = "Изображение скопировано в системный буфер обмена Windows!";
+            TxtStatus.Text = $"Изображение скопировано в буфер ({rtb.PixelWidth} × {rtb.PixelHeight} px)!";
         }
 
         private void BtnSave_Click(object sender, RoutedEventArgs e)
@@ -1187,16 +1786,17 @@ namespace BCCScreenShot
                 {
                     encoder.Save(fs);
                 }
-                TxtStatus.Text = $"Файл сохранен: {dlg.FileName}";
+                TxtStatus.Text = $"Файл сохранен в исходном разрешении ({rtb.PixelWidth} × {rtb.PixelHeight} px): {System.IO.Path.GetFileName(dlg.FileName)}";
             }
         }
 
-        // Global KeyDown (Escape for Reset Tool, Delete / Back for Instant Delete, Shortcuts for tools, Ctrl+0 for Zoom Reset)
+        // Global KeyDown
         private void Window_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
         {
             if (e.Key == Key.Escape)
             {
                 CancelActiveDrawing();
+                ClearSelection();
                 ToolSelect.IsChecked = true;
                 TxtStatus.Text = "Инструмент сброшен на режим выбора (Esc).";
             }
@@ -1215,6 +1815,14 @@ namespace BCCScreenShot
             else if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.Z)
             {
                 BtnUndo_Click(sender, e);
+            }
+            else if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.Y)
+            {
+                BtnRedo_Click(sender, e);
+            }
+            else if ((Keyboard.Modifiers == (ModifierKeys.Control | ModifierKeys.Shift)) && e.Key == Key.Z)
+            {
+                BtnRedo_Click(sender, e);
             }
             else if (Keyboard.Modifiers == ModifierKeys.Control && (e.Key == Key.D0 || e.Key == Key.NumPad0))
             {

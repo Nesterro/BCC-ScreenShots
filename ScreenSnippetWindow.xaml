@@ -4,21 +4,59 @@
         Title="Выделение области экрана" 
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         Topmost="True" ShowInTaskbar="False" Cursor="Cross"
+        WindowStartupLocation="Manual"
+        SnapsToDevicePixels="True" UseLayoutRounding="True"
         MouseLeftButtonDown="Window_MouseLeftButtonDown"
         MouseMove="Window_MouseMove"
         MouseLeftButtonUp="Window_MouseLeftButtonUp"
         KeyDown="Window_KeyDown">
 
-    <Canvas x:Name="OverlayCanvas" Background="#70000000">
-        <!-- Selection Rectangle -->
-        <Rectangle x:Name="SelectionRect" Stroke="#6366F1" StrokeThickness="2" StrokeDashArray="4 2" Fill="#10FFFFFF" Visibility="Collapsed"/>
+    <Grid x:Name="RootGrid" ClipToBounds="True">
+        <!-- Frozen screen snapshot -->
+        <Image x:Name="FrozenScreenImage" Stretch="Fill" RenderOptions.BitmapScalingMode="HighQuality"/>
 
-        <!-- Instruction & Dimensions Banner -->
-        <Border x:Name="InfoBanner" Background="#1E293B" CornerRadius="8" Padding="12,8" Canvas.Left="20" Canvas.Top="20" BorderBrush="#6366F1" BorderThickness="1">
-            <StackPanel Orientation="Horizontal">
-                <TextBlock Text="✂️ Зажмите ЛКМ и выделите область на экране (Esc для отмены)" Foreground="#F8FAFC" FontSize="13" FontWeight="SemiBold"/>
-                <TextBlock x:Name="TxtDimensions" Text="" Foreground="#06B6D4" FontSize="13" FontWeight="Bold" Margin="15,0,0,0"/>
-            </StackPanel>
-        </Border>
-    </Canvas>
+        <!-- Dimmed mask with transparent cutout for selected area -->
+        <Path x:Name="DimmedMaskPath" Fill="#65000000">
+            <Path.Data>
+                <CombinedGeometry GeometryCombineMode="Exclude">
+                    <CombinedGeometry.Geometry1>
+                        <RectangleGeometry x:Name="FullMaskGeometry"/>
+                    </CombinedGeometry.Geometry1>
+                    <CombinedGeometry.Geometry2>
+                        <RectangleGeometry x:Name="CutoutGeometry" Rect="0,0,0,0"/>
+                    </CombinedGeometry.Geometry2>
+                </CombinedGeometry>
+            </Path.Data>
+        </Path>
+
+        <!-- Canvas for interactive guidelines & selection rect overlay -->
+        <Canvas x:Name="OverlayCanvas">
+            <!-- Crosshair Guidelines -->
+            <Line x:Name="GuideLineH" Stroke="#5006B6D4" StrokeThickness="1" StrokeDashArray="3 3" Visibility="Collapsed"/>
+            <Line x:Name="GuideLineV" Stroke="#5006B6D4" StrokeThickness="1" StrokeDashArray="3 3" Visibility="Collapsed"/>
+
+            <!-- Selection Rectangle Border -->
+            <Rectangle x:Name="SelectionBorder" Stroke="#06B6D4" StrokeThickness="2" Visibility="Collapsed" IsHitTestVisible="False"/>
+
+            <!-- Corner Handles -->
+            <Rectangle x:Name="HandleTL" Width="8" Height="8" Fill="#FFFFFF" Stroke="#06B6D4" StrokeThickness="1.5" Visibility="Collapsed" IsHitTestVisible="False"/>
+            <Rectangle x:Name="HandleTR" Width="8" Height="8" Fill="#FFFFFF" Stroke="#06B6D4" StrokeThickness="1.5" Visibility="Collapsed" IsHitTestVisible="False"/>
+            <Rectangle x:Name="HandleBL" Width="8" Height="8" Fill="#FFFFFF" Stroke="#06B6D4" StrokeThickness="1.5" Visibility="Collapsed" IsHitTestVisible="False"/>
+            <Rectangle x:Name="HandleBR" Width="8" Height="8" Fill="#FFFFFF" Stroke="#06B6D4" StrokeThickness="1.5" Visibility="Collapsed" IsHitTestVisible="False"/>
+
+            <!-- Floating Dimension Pill -->
+            <Border x:Name="DimensionPill" Background="#1E293B" CornerRadius="6" Padding="8,4" BorderBrush="#06B6D4" BorderThickness="1" Visibility="Collapsed" IsHitTestVisible="False">
+                <TextBlock x:Name="TxtDimensions" Text="0 × 0 px" Foreground="#06B6D4" FontSize="12" FontWeight="Bold"/>
+            </Border>
+
+            <!-- Top Floating Header Banner -->
+            <Border x:Name="InfoBanner" Background="#CC111827" CornerRadius="10" Padding="16,10" Canvas.Top="25" BorderBrush="#38BDF8" BorderThickness="1">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="✂️ Зажмите ЛКМ и выделите нужную область" Foreground="#F8FAFC" FontSize="13" FontWeight="SemiBold"/>
+                    <TextBlock Text="•" Foreground="#64748B" FontSize="13" Margin="10,0"/>
+                    <TextBlock Text="Esc для отмены" Foreground="#94A3B8" FontSize="13"/>
+                </StackPanel>
+            </Border>
+        </Canvas>
+    </Grid>
 </Window>

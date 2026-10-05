@@ -6,6 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
     <ApplicationIcon>app_icon.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
     <RootNamespace>BCCScreenShot</RootNamespace>
     <AssemblyName>BCCScreenShot</AssemblyName>
   </PropertyGroup>

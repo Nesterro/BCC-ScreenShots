@@ -2,6 +2,8 @@
 bin/
 obj/
 BuildReleaseSingleFile/
+BuildRelease/Standalone/
+*Standalone*.exe
 *.user
 *.suo
 *.userosv
