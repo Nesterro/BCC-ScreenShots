@@ -8,6 +8,10 @@
 ![Платформа](https://img.shields.io/badge/.NET-10.0-purple)
 ![Лицензия](https://img.shields.io/badge/License-MIT-green)
 
+## 🚀 Скачать релиз v1.1.0 (Без установки .NET)
+- 📦 **[Скачать ZIP-архив (ScreenShotStudio-Win64.zip)](https://github.com/Nesterro/BCC-ScreenShots/releases/download/v1.1.0/ScreenShotStudio-Win64.zip)** *(рекомендуется для быстрой загрузки, 58 МБ)*
+- ⚡ **[Скачать прямой .exe (ScreenShotStudio-Standalone-Win64.exe)](https://github.com/Nesterro/BCC-ScreenShots/releases/download/v1.1.0/ScreenShotStudio-Standalone-Win64.exe)** *(автономный файл, 139 МБ)*
+
 ---
 
 ## 🌟 Основные возможности и улучшения
@@ -57,6 +61,7 @@
 | `Ctrl + C` | Скопировать изображение в системный буфер обмена Windows |
 | `Ctrl + S` | Сохранить скриншот как PNG |
 | `Ctrl + Z` | Отменить последнее действие |
+| `Ctrl + Y` | Повторить / вернуть отмененное действие |
 
 ---
 
