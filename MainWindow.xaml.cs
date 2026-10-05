@@ -326,16 +326,46 @@ namespace BCCScreenShot
 
                 switch (_currentTool)
                 {
-                    case "select": TxtStatus.Text = "Режим выбора (Кликните по фигуре, Drag для перемещения, маркеры для изменения размера)."; break;
-                    case "arrow": TxtStatus.Text = "Инструмент: Стрелка (Кликните и потяните)."; break;
-                    case "callout": TxtStatus.Text = "Инструмент: Выноска (Кликните на цель, затем место для текста)."; break;
-                    case "step": TxtStatus.Text = "Инструмент: Порядковая метка (Кликните для размещения круга с номером)."; break;
-                    case "rect": TxtStatus.Text = "Инструмент: Рамка / Прямоугольник (Кликните и потяните)."; break;
-                    case "ellipse": TxtStatus.Text = "Инструмент: Овал / Круг (Кликните и потяните)."; break;
-                    case "line": TxtStatus.Text = "Инструмент: Прямая линия (Кликните и потяните)."; break;
-                    case "text": TxtStatus.Text = "Инструмент: Текстовый блок (Кликните для добавления текста)."; break;
-                    case "pencil": TxtStatus.Text = "Инструмент: Карандаш (Зажмите ЛКМ и рисуйте)."; break;
-                    case "highlighter": TxtStatus.Text = "Инструмент: Маркер-выделитель (Зажмите ЛКМ и выделяйте)."; break;
+                    case "select":
+                        DrawingCanvas.Cursor = Cursors.Arrow;
+                        TxtStatus.Text = "Режим выбора (Кликните по фигуре, Drag для перемещения, маркеры для изменения размера).";
+                        break;
+                    case "arrow":
+                        DrawingCanvas.Cursor = Cursors.Cross;
+                        TxtStatus.Text = "Инструмент: Стрелка (Кликните и потяните).";
+                        break;
+                    case "callout":
+                        DrawingCanvas.Cursor = Cursors.Cross;
+                        TxtStatus.Text = "Инструмент: Выноска (Кликните на цель, затем место для текста).";
+                        break;
+                    case "step":
+                        DrawingCanvas.Cursor = Cursors.Hand;
+                        TxtStatus.Text = "Инструмент: Порядковая метка (Кликните для размещения круга с номером).";
+                        break;
+                    case "rect":
+                        DrawingCanvas.Cursor = Cursors.Cross;
+                        TxtStatus.Text = "Инструмент: Рамка / Прямоугольник (Кликните и потяните).";
+                        break;
+                    case "ellipse":
+                        DrawingCanvas.Cursor = Cursors.Cross;
+                        TxtStatus.Text = "Инструмент: Овал / Круг (Кликните и потяните).";
+                        break;
+                    case "line":
+                        DrawingCanvas.Cursor = Cursors.Cross;
+                        TxtStatus.Text = "Инструмент: Прямая линия (Кликните и потяните).";
+                        break;
+                    case "text":
+                        DrawingCanvas.Cursor = Cursors.IBeam;
+                        TxtStatus.Text = "Инструмент: Текстовый блок (Кликните для добавления текста).";
+                        break;
+                    case "pencil":
+                        DrawingCanvas.Cursor = Cursors.Pen;
+                        TxtStatus.Text = "Инструмент: Карандаш (Зажмите ЛКМ и рисуйте).";
+                        break;
+                    case "highlighter":
+                        DrawingCanvas.Cursor = Cursors.Pen;
+                        TxtStatus.Text = "Инструмент: Маркер-выделитель (Зажмите ЛКМ и выделяйте).";
+                        break;
                 }
             }
         }
@@ -518,6 +548,21 @@ namespace BCCScreenShot
                 b.BorderBrush = new SolidColorBrush(_currentColor);
                 UpdateSelectionHighlight(_selectedElement);
             }
+            else if (_selectedElement is Polyline poly)
+            {
+                poly.Stroke = new SolidColorBrush(_currentColor);
+                if (poly.Tag as string == "highlighter" || poly.Opacity < 0.9)
+                {
+                    poly.StrokeThickness = Math.Max(12, _currentStrokeWidth * 3.5);
+                    poly.Opacity = 0.35;
+                }
+                else
+                {
+                    poly.StrokeThickness = _currentStrokeWidth;
+                    poly.Opacity = 1.0;
+                }
+                UpdateSelectionHighlight(_selectedElement);
+            }
             else if (_selectedElement is Shape shape)
             {
                 shape.Stroke = new SolidColorBrush(_currentColor);
@@ -538,12 +583,6 @@ namespace BCCScreenShot
                 {
                     stepTb.FontSize = _currentFontSize;
                 }
-                UpdateSelectionHighlight(_selectedElement);
-            }
-            else if (_selectedElement is Polyline poly)
-            {
-                poly.Stroke = new SolidColorBrush(_currentColor);
-                poly.StrokeThickness = poly.Opacity < 0.9 ? _currentStrokeWidth * 3.5 : _currentStrokeWidth;
                 UpdateSelectionHighlight(_selectedElement);
             }
         }
@@ -590,6 +629,22 @@ namespace BCCScreenShot
                         _currentColor = sb.Color;
                     }
                     _currentStrokeWidth = ln.StrokeThickness;
+                    SliderStroke.Value = _currentStrokeWidth;
+                }
+                else if (elem is Polyline poly)
+                {
+                    if (poly.Stroke is SolidColorBrush sb)
+                    {
+                        _currentColor = sb.Color;
+                    }
+                    if (poly.Tag as string == "highlighter" || poly.Opacity < 0.9)
+                    {
+                        _currentStrokeWidth = Math.Max(1, Math.Min(24, Math.Round(poly.StrokeThickness / 3.5)));
+                    }
+                    else
+                    {
+                        _currentStrokeWidth = Math.Max(1, Math.Min(24, poly.StrokeThickness));
+                    }
                     SliderStroke.Value = _currentStrokeWidth;
                 }
                 else if (elem is Shape shape)
@@ -784,6 +839,41 @@ namespace BCCScreenShot
                 Canvas.SetLeft(HandleP2, arrowData.X2 - 6);
                 Canvas.SetTop(HandleP2, arrowData.Y2 - 6);
                 HandleP2.Visibility = Visibility.Visible;
+                return;
+            }
+
+            // Case Polyline (Pencil or Highlighter)
+            if (elem is Polyline poly)
+            {
+                HandleP1.Visibility = Visibility.Collapsed;
+                HandleP2.Visibility = Visibility.Collapsed;
+                HandleTL.Visibility = Visibility.Collapsed;
+                HandleTR.Visibility = Visibility.Collapsed;
+                HandleBL.Visibility = Visibility.Collapsed;
+                HandleBR.Visibility = Visibility.Collapsed;
+
+                if (poly.Points.Count == 0)
+                {
+                    SelectionBoxBorder.Visibility = Visibility.Collapsed;
+                    return;
+                }
+
+                double minX = double.MaxValue, minY = double.MaxValue;
+                double maxX = double.MinValue, maxY = double.MinValue;
+                foreach (var pt in poly.Points)
+                {
+                    if (pt.X < minX) minX = pt.X;
+                    if (pt.X > maxX) maxX = pt.X;
+                    if (pt.Y < minY) minY = pt.Y;
+                    if (pt.Y > maxY) maxY = pt.Y;
+                }
+
+                double pad = poly.StrokeThickness / 2 + 4;
+                Canvas.SetLeft(SelectionBoxBorder, minX - pad);
+                Canvas.SetTop(SelectionBoxBorder, minY - pad);
+                SelectionBoxBorder.Width = Math.Max(16, (maxX - minX) + pad * 2);
+                SelectionBoxBorder.Height = Math.Max(16, (maxY - minY) + pad * 2);
+                SelectionBoxBorder.Visibility = Visibility.Visible;
                 return;
             }
 
@@ -996,6 +1086,25 @@ namespace BCCScreenShot
                     Cursor = Cursors.SizeAll
                 };
             }
+            else if (original is Polyline poly)
+            {
+                var clonePoly = new Polyline
+                {
+                    Stroke = poly.Stroke != null ? new SolidColorBrush(((SolidColorBrush)poly.Stroke).Color) : new SolidColorBrush(_currentColor),
+                    StrokeThickness = poly.StrokeThickness,
+                    StrokeLineJoin = poly.StrokeLineJoin,
+                    StrokeStartLineCap = poly.StrokeStartLineCap,
+                    StrokeEndLineCap = poly.StrokeEndLineCap,
+                    Opacity = poly.Opacity,
+                    Tag = poly.Tag,
+                    Cursor = Cursors.SizeAll
+                };
+                foreach (var pt in poly.Points)
+                {
+                    clonePoly.Points.Add(new System.Windows.Point(pt.X + 20, pt.Y + 20));
+                }
+                return clonePoly;
+            }
 
             return null;
         }
@@ -1011,58 +1120,59 @@ namespace BCCScreenShot
 
             System.Windows.Point current = e.GetPosition(DrawingCanvas);
 
-            // Check if user clicked directly on an existing annotation
-            var hit = e.Source as UIElement;
-            if (hit != null && hit != DrawingCanvas && hit != SelectionBoxBorder)
-            {
-                DependencyObject target = hit;
-                while (target != null && VisualTreeHelper.GetParent(target) != null && VisualTreeHelper.GetParent(target) != DrawingCanvas)
-                {
-                    target = VisualTreeHelper.GetParent(target);
-                }
-
-                var targetElem = target as UIElement;
-                if (targetElem != null && _annotations.Contains(targetElem))
-                {
-                    // Existing annotation clicked! Select it immediately!
-                    SelectElement(targetElem);
-                    ToolSelect.IsChecked = true;
-
-                    // Ctrl + Drag to Duplicate
-                    if (Keyboard.Modifiers == ModifierKeys.Control)
-                    {
-                        var clone = CloneUIElement(targetElem);
-                        if (clone != null)
-                        {
-                            AddAnnotation(clone);
-                            targetElem = clone;
-                            SelectElement(targetElem);
-                            TxtStatus.Text = "Элемент скопирован и перемещается (Ctrl + Drag).";
-                        }
-                    }
-
-                    _isDraggingElement = true;
-                    _startPoint = current;
-                    _dragLastPoint = current;
-
-                    double elemLeft = Canvas.GetLeft(targetElem);
-                    double elemTop = Canvas.GetTop(targetElem);
-                    if (double.IsNaN(elemLeft)) elemLeft = 0;
-                    if (double.IsNaN(elemTop)) elemTop = 0;
-
-                    _dragOffset = new System.Windows.Point(current.X - elemLeft, current.Y - elemTop);
-                    return;
-                }
-            }
-
-            // Clicked on empty canvas in Select mode -> clear selection
+            // In Select mode: clicking on an existing annotation selects it and starts dragging
             if (_currentTool == "select")
             {
+                var hit = e.Source as UIElement;
+                if (hit != null && hit != DrawingCanvas && hit != SelectionBoxBorder &&
+                    hit != HandleTL && hit != HandleTR && hit != HandleBL && hit != HandleBR &&
+                    hit != HandleP1 && hit != HandleP2)
+                {
+                    DependencyObject target = hit;
+                    while (target != null && VisualTreeHelper.GetParent(target) != null && VisualTreeHelper.GetParent(target) != DrawingCanvas)
+                    {
+                        target = VisualTreeHelper.GetParent(target);
+                    }
+
+                    var targetElem = target as UIElement;
+                    if (targetElem != null && _annotations.Contains(targetElem))
+                    {
+                        // Existing annotation clicked! Select it immediately!
+                        SelectElement(targetElem);
+
+                        // Ctrl + Drag to Duplicate
+                        if (Keyboard.Modifiers == ModifierKeys.Control)
+                        {
+                            var clone = CloneUIElement(targetElem);
+                            if (clone != null)
+                            {
+                                AddAnnotation(clone);
+                                targetElem = clone;
+                                SelectElement(targetElem);
+                                TxtStatus.Text = "Элемент скопирован и перемещается (Ctrl + Drag).";
+                            }
+                        }
+
+                        _isDraggingElement = true;
+                        _startPoint = current;
+                        _dragLastPoint = current;
+
+                        double elemLeft = Canvas.GetLeft(targetElem);
+                        double elemTop = Canvas.GetTop(targetElem);
+                        if (double.IsNaN(elemLeft)) elemLeft = 0;
+                        if (double.IsNaN(elemTop)) elemTop = 0;
+
+                        _dragOffset = new System.Windows.Point(current.X - elemLeft, current.Y - elemTop);
+                        return;
+                    }
+                }
+
+                // Clicked on empty canvas in Select mode -> clear selection
                 ClearSelection();
                 return;
             }
 
-            // Clicked on empty canvas in Drawing mode
+            // Clicked on canvas in Drawing mode
             if (_isTwoStageActive)
             {
                 FinalizeActiveDrawing(current);
@@ -1105,19 +1215,22 @@ namespace BCCScreenShot
 
             if (_currentTool == "pencil" || _currentTool == "highlighter")
             {
+                bool isHighlighter = _currentTool == "highlighter";
                 _activePolyline = new Polyline
                 {
                     Stroke = new SolidColorBrush(_currentColor),
-                    StrokeThickness = _currentTool == "highlighter" ? _currentStrokeWidth * 3.5 : _currentStrokeWidth,
+                    StrokeThickness = isHighlighter ? Math.Max(12, _currentStrokeWidth * 3.5) : _currentStrokeWidth,
                     StrokeLineJoin = PenLineJoin.Round,
                     StrokeStartLineCap = PenLineCap.Round,
                     StrokeEndLineCap = PenLineCap.Round,
-                    Opacity = _currentTool == "highlighter" ? 0.40 : 1.0,
+                    Opacity = isHighlighter ? 0.35 : 1.0,
+                    Tag = isHighlighter ? "highlighter" : "pencil",
                     IsHitTestVisible = false,
-                    Cursor = Cursors.SizeAll
+                    Cursor = Cursors.Pen
                 };
                 _activePolyline.Points.Add(_startPoint);
                 DrawingCanvas.Children.Add(_activePolyline);
+                DrawingCanvas.CaptureMouse();
                 return;
             }
 
@@ -1232,6 +1345,20 @@ namespace BCCScreenShot
                     UpdateSelectionHighlight(path);
                     return;
                 }
+                else if (_selectedElement is Polyline poly)
+                {
+                    double dx = current.X - _dragLastPoint.X;
+                    double dy = current.Y - _dragLastPoint.Y;
+                    var newPoints = new PointCollection();
+                    foreach (var pt in poly.Points)
+                    {
+                        newPoints.Add(new System.Windows.Point(pt.X + dx, pt.Y + dy));
+                    }
+                    poly.Points = newPoints;
+                    _dragLastPoint = current;
+                    UpdateSelectionHighlight(poly);
+                    return;
+                }
                 else
                 {
                     double newL = current.X - _dragOffset.X;
@@ -1247,7 +1374,15 @@ namespace BCCScreenShot
 
             if (_currentTool == "pencil" || _currentTool == "highlighter")
             {
-                _activePolyline?.Points.Add(current);
+                if (_activePolyline != null)
+                {
+                    if (_activePolyline.Points.Count == 0 ||
+                        Math.Abs(_activePolyline.Points[^1].X - current.X) >= 1 ||
+                        Math.Abs(_activePolyline.Points[^1].Y - current.Y) >= 1)
+                    {
+                        _activePolyline.Points.Add(current);
+                    }
+                }
                 return;
             }
 
@@ -1336,13 +1471,15 @@ namespace BCCScreenShot
 
             if (_activePolyline != null)
             {
+                DrawingCanvas.ReleaseMouseCapture();
                 _activePolyline.IsHitTestVisible = true;
                 AddAnnotation(_activePolyline);
-                SelectElement(_activePolyline);
-                ToolSelect.IsChecked = true;
                 _activePolyline = null;
                 _isDrawing = false;
                 _isTwoStageActive = false;
+                TxtStatus.Text = _currentTool == "highlighter"
+                    ? "Штрих маркера добавлен. Продолжайте выделять или нажмите Esc для режима выбора."
+                    : "Штрих карандаша добавлен. Продолжайте рисовать или нажмите Esc для режима выбора.";
                 return;
             }
 
