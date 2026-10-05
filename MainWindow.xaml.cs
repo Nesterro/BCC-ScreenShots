@@ -7,6 +7,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
+using System.Threading.Tasks;
 using Microsoft.Win32;
 
 namespace BCCScreenShot
@@ -201,11 +202,27 @@ namespace BCCScreenShot
             SelectElement(rect);
         }
 
-        // Screen Capture Region Snippet Window
-        private void BtnCaptureArea_Click(object sender, RoutedEventArgs e)
+        private async Task PrepareForCaptureAsync()
         {
+            Opacity = 0;
             Hide();
-            System.Threading.Thread.Sleep(150);
+            // Process any pending render/layout messages so the OS updates the window state
+            await System.Windows.Threading.Dispatcher.Yield(System.Windows.Threading.DispatcherPriority.Render);
+            // Allow Windows DWM to complete any window hide/fade animation cleanly
+            await Task.Delay(250);
+        }
+
+        private void RestoreAfterCapture()
+        {
+            Show();
+            Activate();
+            Opacity = 1;
+        }
+
+        // Screen Capture Region Snippet Window
+        private async void BtnCaptureArea_Click(object sender, RoutedEventArgs e)
+        {
+            await PrepareForCaptureAsync();
 
             using var bmp = ScreenCaptureService.CaptureVirtualScreen();
             var bs = ScreenCaptureService.BitmapToBitmapSource(bmp);
@@ -213,8 +230,7 @@ namespace BCCScreenShot
             var snippetWin = new ScreenSnippetWindow(bs);
             bool? result = snippetWin.ShowDialog();
 
-            Show();
-            Activate();
+            RestoreAfterCapture();
 
             if (result == true && snippetWin.CapturedBitmap != null)
             {
@@ -244,32 +260,28 @@ namespace BCCScreenShot
             }
         }
 
-        private void CaptureSelectedMonitor(MonitorItem mon)
+        private async void CaptureSelectedMonitor(MonitorItem mon)
         {
-            Hide();
-            System.Threading.Thread.Sleep(150);
+            await PrepareForCaptureAsync();
 
             using var bmp = ScreenCaptureService.CaptureMonitor(mon);
             var bs = ScreenCaptureService.BitmapToBitmapSource(bmp);
 
-            Show();
-            Activate();
+            RestoreAfterCapture();
 
             SetBackgroundImage(bs);
             ResetCanvasAnnotations();
             TxtStatus.Text = $"Снимок дисплея «{mon.FriendlyName}» ({bs.PixelWidth} × {bs.PixelHeight} px) загружен на холст!";
         }
 
-        private void CaptureVirtualScreen()
+        private async void CaptureVirtualScreen()
         {
-            Hide();
-            System.Threading.Thread.Sleep(150);
+            await PrepareForCaptureAsync();
 
             using var bmp = ScreenCaptureService.CaptureVirtualScreen();
             var bs = ScreenCaptureService.BitmapToBitmapSource(bmp);
 
-            Show();
-            Activate();
+            RestoreAfterCapture();
 
             SetBackgroundImage(bs);
             ResetCanvasAnnotations();
